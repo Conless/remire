@@ -1,0 +1,7 @@
+[package]
+name = "kernel"
+version = "0.1.0"
+authors = [ "Conless Pan <conlesspan@outlook.com>" ]
+edition = "2021"
+
+[dependencies]
