@@ -65,6 +65,10 @@ fn compile(mode: &BuildMode) -> bool {
     status.unwrap().success()
 }
 
+/// Convert ELF to binary
+/// 
+/// This function uses `rust-objcopy` to convert the ELF file to a binary file
+/// The parameter `mode` is used to determine the path of the Elf file
 fn objcopy(mode: &BuildMode) -> bool {
     let kernel_elf = project_root()
         .join("target/riscv64gc-unknown-none-elf")
@@ -91,6 +95,7 @@ fn objcopy(mode: &BuildMode) -> bool {
     status.unwrap().success()
 }
 
+/// Run kernel in QEMU
 fn qemu_run(mode: &BuildMode) -> bool {
     let kernel_bin = project_root()
         .join("target/riscv64gc-unknown-none-elf")

@@ -1,0 +1,24 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "qemu",
+      "command": "qemu-system-riscv64",
+      "type": "shell",
+      "args": [
+        "-machine", "virt",
+        "-nographic",
+        "-bios", "none",
+        "-device", "loader,file=${workspaceFolder}/target/riscv64gc-unknown-none-elf/debug/kernel,addr=0x80000000",
+        "-S", "-s"
+      ],
+      "presentation": {
+        "echo": true,
+        "clear": true,
+        "group": "qemu"
+      },
+      "isBackground": true,
+      "group": "build"
+    }
+  ]
+}
