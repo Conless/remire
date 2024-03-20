@@ -5,19 +5,21 @@
 
 use core::panic::PanicInfo;
 
+use drivers::println;
+
 #[no_mangle]
 #[panic_handler]
 fn panic_handler(info: &PanicInfo) -> ! {
     // This is a simple panic handler that just prints the panic message to the serial port
-    if let Some(_location) = info.location() {
-        // println!(
-        //     "Panicked at {}:{} {}",
-        //     location.file(),
-        //     location.line(),
-        //     info.message().unwrap()
-        // );
+    if let Some(location) = info.location() {
+        println!(
+            "Panicked at {}: {} {}",
+            location.file(),
+            location.line(),
+            info.message().unwrap()
+        );
     } else {
-        // println!("Panicked: {}", info.message().unwrap());
+        println!("Panicked: {}", info.message().unwrap());
     }
     loop {}
 }
