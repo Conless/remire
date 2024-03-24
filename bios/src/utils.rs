@@ -7,8 +7,8 @@ use core::fmt::{Arguments, Write};
 
 use crate::legacy::console::*;
 
-struct Stdin;
-struct Stdout;
+pub(crate) struct Stdin;
+pub(crate) struct Stdout;
 
 impl Stdout {
     pub fn putchar(&self, c: char) {

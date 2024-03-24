@@ -10,6 +10,10 @@ mod uart;
 /// - `sbi_console_getchar` (SBI version 0.1, EID 0x02)
 pub mod console;
 
+/// The `exit` module contains implementation of
+/// - `sbi_shutdown` (SBI version 0.1, EID 0x08)
+pub mod exit;
+
 pub(crate) fn sbi_shutdown() {
   
 }

@@ -22,6 +22,8 @@ use constants::*;
 use core::arch::asm;
 use riscv::{asm, register::mtvec};
 
+use crate::legacy::exit::sbi_shutdown;
+
 /// Constants for the bios
 pub(crate) mod constants {
     pub const BIOS_STACK_SIZE: usize = 4 * 1024;
@@ -55,6 +57,8 @@ extern "C" fn rust_main() {
     unsafe {
         mtvec::write(trap::mtrap_handler as usize, mtvec::TrapMode::Direct);
     }
+    sbi_shutdown();
+    println!("Hello world from BIOS!");
     // Jump to os entry
     unsafe {
         asm!(
