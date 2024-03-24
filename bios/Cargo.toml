@@ -6,4 +6,4 @@ edition = "2021"
 [dependencies]
 bitflags = "1.2.1"
 riscv = "0.10.1"
-lazy_static = { version = "1.4.0", features = ["spin_no_std"] }
+spin = "0.9"

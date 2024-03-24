@@ -4,25 +4,46 @@
 // LICENSE file in the root directory of this source tree.
 
 use core::sync::atomic::AtomicPtr;
-use lazy_static::lazy_static;
+use spin::lock_api::Mutex;
 
-use crate::uart::Uart16550;
+use super::uart::Uart16550;
 
-// I don't think this way of console output is elegant, and I plan to replace it with VirtIOConsole later.
-// Question: how to output something in kernel state?
-lazy_static! {
-    pub static ref CONSOLE: Uart16550<AtomicPtr<u8>> = unsafe { Uart16550::new(0x10_000_000) }; // Device for console I/O at base address 0x10000000
+struct UartWrapper(*const Uart16550<AtomicPtr<u8>>);
+
+unsafe impl Send for UartWrapper {}
+unsafe impl Sync for UartWrapper {}
+
+impl UartWrapper {
+    #[inline]
+    pub fn get(&self) -> &Uart16550<AtomicPtr<u8>> {
+        unsafe { &*self.0 }
+    }
 }
 
-pub fn sbi_console_putchar(c: u8) -> i32 {
-    match CONSOLE.send(c) {
+static mut CONSOLE: Mutex<UartWrapper> = Mutex::new(UartWrapper(core::ptr::null()));
+
+pub(crate) fn console_init() {
+    unsafe {
+        CONSOLE.lock().0 = &Uart16550::new(0x1000_0000);
+        CONSOLE.get_mut().get().init();
+    }
+}
+
+pub(crate) fn sbi_console_putchar(c: u8) -> i32 {
+    let result = unsafe {
+        CONSOLE.get_mut().get().send(c)
+    };
+    match result {
         Ok(_) => 0,
         Err(_) => -1,
     }
 }
 
-pub fn sbi_console_getchar() -> i32 {
-    match CONSOLE.recv() {
+pub(crate) fn sbi_console_getchar() -> i32 {
+    let result = unsafe {
+        CONSOLE.get_mut().get().recv()
+    };
+    match result {
         Ok(c) => c as i32,
         Err(_) => -1,
     }
