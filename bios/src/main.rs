@@ -53,11 +53,11 @@ unsafe extern "C" fn _start() -> ! {
 }
 
 extern "C" fn rust_main() {
-    legacy::console::console_init();
+    legacy::uart::console_init();
     unsafe {
-        mtvec::write(trap::mtrap_handler as usize, mtvec::TrapMode::Direct);
+        // mtvec::write(trap::mtrap_handler as usize, mtvec::TrapMode::Direct);
     }
-    sbi_shutdown();
+    // sbi_shutdown();
     println!("Hello world from BIOS!");
     // Jump to os entry
     unsafe {
