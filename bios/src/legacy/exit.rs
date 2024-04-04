@@ -14,12 +14,13 @@ pub(crate) mod exit_values {
     pub const QEMU_EXIT_RESET: u32 = 0x7777;
 }
 
-pub(crate) fn sbi_shutdown() {
+pub(crate) fn sbi_shutdown() -> ! {
     unsafe {
         asm!(
             "sw {0}, 0({1})",
             in(reg) QEMU_EXIT_SUCC,
             in(reg) QEMU_EXIT_ADDR
-        )
+        );
     }
+    unreachable!()
 }

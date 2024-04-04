@@ -8,7 +8,7 @@
 
 #![no_std]
 #![no_main]
-#![feature(naked_functions, asm_const)]
+#![feature(naked_functions, asm_const, panic_info_message)]
 // #![deny(warnings, missing_docs)]
 
 mod lang;

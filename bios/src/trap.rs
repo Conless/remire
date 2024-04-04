@@ -54,10 +54,12 @@ pub(crate) extern "C" fn fast_handler(
                     *bits &= !mstatus::MPP;
                     *bits |= mstatus::MPIE | mstatus::MPP_SUPERVISOR;
                 });
-                mie::write(mie::MSIE | mie::MTIE);
+                // mie::write(mie::MSIE | mie::MTIE);
                 break boot(ctx, supervisor.start_addr, supervisor.opaque);
             }
-            _ => todo!(),
+            _ => {
+                panic!("Hart {} is not ready", hart_id());
+            }
         }
     }
 }
