@@ -15,10 +15,12 @@ mod lang;
 mod stack;
 mod trap;
 mod utils;
+mod device;
 
 mod legacy; // Chapter 5
 
 use constants::*;
+use device::BoardInfo;
 use core::arch::asm;
 use riscv::{
     asm,
@@ -59,10 +61,12 @@ unsafe extern "C" fn _start() -> ! {
     )
 }
 
-extern "C" fn rust_main() {
+extern "C" fn rust_main(hartid: usize, opaque: usize) {
     legacy::uart::console_init();
     stack::prepare_for_trap();
     println!("Hello world from BIOS!");
+    let board_info = device::parse(opaque);
+    set_pmp(&board_info);
     unsafe {
         asm!("csrw mideleg,    {}", in(reg) !0);
         asm!("csrw medeleg,    {}", in(reg) !0);
@@ -84,7 +88,7 @@ fn set_pmp(board_info: &BoardInfo) {
         pmpaddr1::write(mem.start >> 2);
         // SBI
         pmpcfg0::set_pmp(2, Range::TOR, Permission::NONE, false);
-        pmpaddr2::write(SUPERVISOR_ENTRY >> 2);
+        pmpaddr2::write(OS_ENTRY_ADDR >> 2);
         // 主存
         pmpcfg0::set_pmp(3, Range::TOR, Permission::RWX, false);
         pmpaddr3::write(mem.end >> 2);
