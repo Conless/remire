@@ -6,14 +6,14 @@
 #![no_std]
 #![no_main]
 // #![deny(warnings)]
-#![feature(panic_info_message)]
-#![feature(naked_functions)]
+#![feature(naked_functions, panic_info_message, panic_internals)]
 
-use core::arch::asm;
+use core::{arch::asm, panicking::panic};
 
 use drivers::{init_device, print, println};
 
 mod lang;
+mod sbi;
 
 const BOOTLOADER_STACK_SIZE: usize = 4096;
 
@@ -47,8 +47,7 @@ extern "C" fn rust_init() -> ! {
 fn rust_main() -> ! {
     println!("Hello, world!");
     println!("This is the {} message", 1);
-
-    loop {}
+    panic!("This is a panic message")
 }
 
 /// This function is made only to make `cargo test` and analyzer happy

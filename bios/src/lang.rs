@@ -5,9 +5,8 @@
 
 use core::panic::PanicInfo;
 
-use drivers::println;
-
-use crate::sbi::shutdown;
+use crate::println;
+use crate::legacy::exit::sbi_shutdown;
 
 #[no_mangle]
 #[panic_handler]
@@ -23,5 +22,5 @@ fn panic_handler(info: &PanicInfo) -> ! {
     } else {
         println!("Panicked: {}", info.message().unwrap());
     }
-    shutdown(true)
+    sbi_shutdown()
 }

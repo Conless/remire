@@ -1,0 +1,12 @@
+[package]
+name = "bios"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+riscv = "0.10.1"
+spin = "0.9"
+bitflags = "1.2.1"
+fast-trap = { version = "=0.0.1", features = ["riscv-m"] }
+dtb-walker = "=0.2.0-alpha.3"
+sbi-spec = "0.0.7"

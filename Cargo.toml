@@ -2,5 +2,9 @@
 members = [
   "crates/*",
 ]
+exclude = [
+  "bios",
+  "xtask"
+]
 
 resolver = "2"
