@@ -5,8 +5,6 @@
 
 use core::sync::atomic::{AtomicU8, Ordering};
 
-use spin::lock_api::Mutex;
-
 pub(crate) static CONSOLE: Uart16550Map = Uart16550Map(0x1000_0000 as _);
 
 pub(crate) fn console_init() {
@@ -55,10 +53,10 @@ pub struct Uart16550<T> {
 impl Uart16550<AtomicU8> {
     /// Initialize UART
     pub fn init(&self) {
-        self.int_en.store(0x00, Ordering::Relaxed);
-        self.fifo_ctrl.store(0xC7, Ordering::Relaxed);
-        self.line_ctrl.store(0x0B, Ordering::Relaxed);
-        self.int_en.store(0x01, Ordering::Relaxed);
+        // self.int_en.store(0x00, Ordering::Relaxed);
+        // self.fifo_ctrl.store(0xC7, Ordering::Relaxed);
+        // self.line_ctrl.store(0x0B, Ordering::Relaxed);
+        // self.int_en.store(0x01, Ordering::Relaxed);
     }
 
     /// Get line status.

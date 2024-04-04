@@ -1,22 +1,120 @@
-// Copyright (c) 2024 Conless Pan
+use crate::{constants::*, trap::{fast_handler, trap_handler}, utils::hart_id, Supervisor};
+use core::{mem::forget, ptr::NonNull};
+use fast_trap::{FlowContext, FreeTrapStack};
+use hsm_cell::{HsmCell, LocalHsmCell, RemoteHsmCell};
 
-// This source code is licensed under the MIT license found in the
-// LICENSE file in the root directory of this source tree.
+/// 栈空间。
+#[link_section = ".bss.uninit"]
+static mut ROOT_STACK: [Stack; HART_MAX] = [Stack::ZERO; HART_MAX];
 
-use core::arch::asm;
-
-use crate::constants::*;
-
-#[link_section = ".bss"]
-static mut BIOS_STACK: [u8; BIOS_STACK_SIZE] = [0; BIOS_STACK_SIZE];
-
+/// 定位每个 hart 的栈。
 #[naked]
 pub(crate) unsafe extern "C" fn locate() {
-    asm!(
-        "   la sp, {stack}
+    core::arch::asm!(
+        "   la   sp, {stack}
+            li   t0, {per_hart_stack_size}
+            csrr t1, mhartid
+            addi t1, t1,  1
+         1: add  sp, sp, t0
+            addi t1, t1, -1
+            bnez t1, 1b
+            call t1, {move_stack}
             ret
         ",
-        stack = sym BIOS_STACK,
-        options(noreturn)
+        per_hart_stack_size = const MACHINE_STACK_SIZE,
+        stack               =   sym ROOT_STACK,
+        move_stack          =   sym fast_trap::reuse_stack_for_trap,
+        options(noreturn),
     )
+}
+
+/// 预备陷入栈。
+pub(crate) fn prepare_for_trap() {
+    unsafe { ROOT_STACK.get_unchecked_mut(hart_id()).load_as_stack() };
+}
+
+/// 获取此 hart 的 local hsm 对象。
+pub(crate) fn local_hsm() -> LocalHsmCell<'static, Supervisor> {
+    unsafe {
+        ROOT_STACK
+            .get_unchecked_mut(hart_id())
+            .hart_context()
+            .hsm
+            .local()
+    }
+}
+
+/// 获取此 hart 的 remote hsm 对象。
+pub(crate) fn local_remote_hsm() -> RemoteHsmCell<'static, Supervisor> {
+    unsafe {
+        ROOT_STACK
+            .get_unchecked_mut(hart_id())
+            .hart_context()
+            .hsm
+            .remote()
+    }
+}
+
+/// 获取任意 hart 的 remote hsm 对象。
+pub(crate) fn remote_hsm(hart_id: usize) -> Option<RemoteHsmCell<'static, Supervisor>> {
+    unsafe {
+        ROOT_STACK
+            .get_mut(hart_id)
+            .map(|x| x.hart_context().hsm.remote())
+    }
+}
+
+/// 类型化栈。
+///
+/// 每个硬件线程拥有一个满足这样条件的内存块。
+/// 这个内存块的底部放着硬件线程状态 [`HartContext`]，顶部用于陷入处理，中间是这个硬件线程的栈空间。
+/// 不需要 M 态线程，每个硬件线程只有这一个栈。
+#[repr(C, align(128))]
+struct Stack([u8; MACHINE_STACK_SIZE]);
+
+impl Stack {
+    /// 零初始化以避免加载。
+    const ZERO: Self = Self([0; MACHINE_STACK_SIZE]);
+
+    /// 从栈上取出硬件线程状态。
+    #[inline]
+    fn hart_context(&mut self) -> &mut HartContext {
+        unsafe { &mut *self.0.as_mut_ptr().cast() }
+    }
+
+    fn load_as_stack(&'static mut self) {
+        let hart = self.hart_context();
+        let context_ptr = hart.context_ptr();
+        hart.init();
+        let range = self.0.as_ptr_range();
+        forget(
+            FreeTrapStack::new(
+                range.start as usize..range.end as usize,
+                |_| {},
+                context_ptr,
+                fast_handler,
+            )
+            .unwrap()
+            .load(),
+        );
+    }
+}
+
+/// 硬件线程上下文。
+struct HartContext {
+    /// 陷入上下文。
+    trap: FlowContext,
+    hsm: HsmCell<Supervisor>,
+}
+
+impl HartContext {
+    #[inline]
+    fn init(&mut self) {
+        self.hsm = HsmCell::new();
+    }
+
+    #[inline]
+    fn context_ptr(&mut self) -> NonNull<FlowContext> {
+        unsafe { NonNull::new_unchecked(&mut self.trap) }
+    }
 }
