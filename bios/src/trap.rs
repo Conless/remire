@@ -8,7 +8,8 @@ use core::arch::asm;
 use fast_trap::{trap_entry, FastContext, FastResult};
 use riscv::register::{satp, sstatus};
 
-use crate::{utils::hart_id, OS_ENTRY_ADDR};
+use crate::{stack::local_hsm, utils::hart_id};
+use crate::utils::{mstatus, mie, mepc};
 
 #[no_mangle]
 #[naked]
@@ -45,5 +46,18 @@ pub(crate) extern "C" fn fast_handler(
         ctx.regs().pc = start_addr;
         ctx.call(2)
     }
-    boot(ctx, OS_ENTRY_ADDR, 0)
+    // boot(ctx, 0x8020_0000, 0)
+    loop {
+        match local_hsm().start() {
+            Ok(supervisor) => {
+                mstatus::update(|bits| {
+                    *bits &= !mstatus::MPP;
+                    *bits |= mstatus::MPIE | mstatus::MPP_SUPERVISOR;
+                });
+                mie::write(mie::MSIE | mie::MTIE);
+                break boot(ctx, supervisor.start_addr, supervisor.opaque);
+            }
+            _ => todo!(),
+        }
+    }
 }

@@ -43,8 +43,4 @@ macro_rules! println {
     }
 }
 
-#[inline(always)]
-pub fn hart_id() -> usize {
-    riscv::register::mhartid::read()
-}
 

@@ -9,19 +9,18 @@
 #![no_std]
 #![no_main]
 #![feature(naked_functions, asm_const)]
-// #![deny(warnings)]
+// #![deny(warnings, missing_docs)]
 
 mod lang;
 mod stack;
 mod trap;
 mod utils;
-mod device;
 
 mod legacy; // Chapter 5
 
 use constants::*;
-use device::BoardInfo;
-use core::arch::asm;
+use sbi_spec::hsm::hart_state;
+use core::{arch::asm, sync::atomic::{AtomicUsize, Ordering}};
 use riscv::{
     asm,
     register::{medeleg, mtvec},
@@ -61,12 +60,18 @@ unsafe extern "C" fn _start() -> ! {
     )
 }
 
+static mut ATOMIC_TEST: AtomicUsize = AtomicUsize::new(0);
+
 extern "C" fn rust_main(hartid: usize, opaque: usize) {
     legacy::uart::console_init();
     stack::prepare_for_trap();
     println!("Hello world from BIOS!");
-    let board_info = device::parse(opaque);
-    set_pmp(&board_info);
+    let board_info = utils::parse(opaque);
+    utils::set_pmp(&board_info);
+    stack::local_remote_hsm().start(Supervisor {
+        start_addr: OS_ENTRY_ADDR,
+        opaque,
+    });
     unsafe {
         asm!("csrw mideleg,    {}", in(reg) !0);
         asm!("csrw medeleg,    {}", in(reg) !0);
@@ -77,23 +82,3 @@ extern "C" fn rust_main(hartid: usize, opaque: usize) {
     }
 }
 
-fn set_pmp(board_info: &BoardInfo) {
-    use riscv::register::*;
-    let mem = &board_info.mem;
-    unsafe {
-        pmpcfg0::set_pmp(0, Range::OFF, Permission::NONE, false);
-        pmpaddr0::write(0);
-        // 外设
-        pmpcfg0::set_pmp(1, Range::TOR, Permission::RW, false);
-        pmpaddr1::write(mem.start >> 2);
-        // SBI
-        pmpcfg0::set_pmp(2, Range::TOR, Permission::NONE, false);
-        pmpaddr2::write(OS_ENTRY_ADDR >> 2);
-        // 主存
-        pmpcfg0::set_pmp(3, Range::TOR, Permission::RWX, false);
-        pmpaddr3::write(mem.end >> 2);
-        // 其他
-        pmpcfg0::set_pmp(4, Range::TOR, Permission::RW, false);
-        pmpaddr4::write(1 << (usize::BITS - 1));
-    }
-}
