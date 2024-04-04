@@ -37,7 +37,7 @@ pub(crate) mod constants {
     pub const MACHINE_STACK_SIZE: usize = 4 * 1024;
     pub const OS_ENTRY_ADDR: usize = 0x8020_0000;
     pub const OS_STACK_SIZE: usize = 16 * 1024;
-    pub const HART_MAX: usize = 1;
+    pub const HART_MAX: usize = 2;
 }
 
 /// The entry point of the bios
@@ -60,14 +60,12 @@ unsafe extern "C" fn _start() -> ! {
     )
 }
 
-static mut ATOMIC_TEST: AtomicUsize = AtomicUsize::new(0);
-
 extern "C" fn rust_main(hartid: usize, opaque: usize) {
     legacy::uart::console_init();
-    stack::prepare_for_trap();
     println!("Hello world from BIOS!");
-    let board_info = utils::parse(opaque);
-    utils::set_pmp(&board_info);
+    // let board_info = utils::parse(opaque);
+    utils::set_pmp();
+    stack::prepare_for_trap();
     stack::local_remote_hsm().start(Supervisor {
         start_addr: OS_ENTRY_ADDR,
         opaque,

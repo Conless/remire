@@ -10,6 +10,7 @@ use crate::{
     trap::fast_handler,
     utils::{hart_id, HsmCell, LocalHsmCell, RemoteHsmCell},
     Supervisor,
+    println,
 };
 use core::{cell::UnsafeCell, mem::forget, ptr::NonNull};
 use fast_trap::{FlowContext, FreeTrapStack};
@@ -48,6 +49,8 @@ impl Stack {
             .unwrap()
             .load(),
         );
+        let help = range;
+        println!("Stack loaded: {:x?} -> {:x?}", help.start, help.end);
     }
 }
 
