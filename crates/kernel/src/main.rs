@@ -13,6 +13,7 @@ use core::{arch::asm, panicking::panic};
 use drivers::{init_device, print, println};
 
 mod lang;
+mod sbi;
 
 const BOOTLOADER_STACK_SIZE: usize = 4096;
 

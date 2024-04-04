@@ -7,6 +7,8 @@ use core::panic::PanicInfo;
 
 use drivers::println;
 
+use crate::sbi::shutdown;
+
 #[no_mangle]
 #[panic_handler]
 fn panic_handler(info: &PanicInfo) -> ! {
@@ -21,5 +23,5 @@ fn panic_handler(info: &PanicInfo) -> ! {
     } else {
         println!("Panicked: {}", info.message().unwrap());
     }
-    loop {}
+    shutdown(true)
 }

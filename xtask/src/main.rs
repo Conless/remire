@@ -342,6 +342,7 @@ fn main() {
     for task in task_queue {
         if !task.1(&mode) {
             eprintln!("Execution failed when running task {}", task.0);
+            std::process::exit(1);
         }
     }
 }
