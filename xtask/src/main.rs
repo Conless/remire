@@ -166,7 +166,7 @@ fn qemu_run(mode: &BuildMode) -> bool {
         } else {
             "debug"
         })
-        .join("bios.bin");
+        .join("rustsbi-qemu.bin");
     let mut command = Command::new("qemu-system-riscv64");
     command
         .arg("-nographic")
@@ -234,7 +234,7 @@ fn qemu_debug(mode: &BuildMode) -> bool {
         } else {
             "debug"
         })
-        .join("bios.bin");
+        .join("rustsbi-qemu.bin");
     let mut command = Command::new("qemu-system-riscv64");
     command
         .arg("-nographic")
@@ -257,13 +257,13 @@ fn qemu_debug(mode: &BuildMode) -> bool {
 
 fn gdb(mode: &BuildMode) -> bool {
     let kernel_elf = project_root()
-        .join("bios/target/riscv64gc-unknown-none-elf")
+        .join("target/riscv64gc-unknown-none-elf")
         .join(if let BuildMode::Release = mode {
             "release"
         } else {
             "debug"
         })
-        .join("bios");
+        .join("kernel");
     let mut command = Command::new("riscv64-elf-gdb");
     command
         .arg("-ex")
