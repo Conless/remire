@@ -6,27 +6,38 @@
 #![no_std]
 #![no_main]
 // #![deny(warnings)]
-#![feature(naked_functions, panic_info_message, panic_internals)]
+#![feature(naked_functions, asm_const, panic_info_message)]
 
-use core::{arch::asm, panicking::panic};
+use core::arch::{asm, global_asm};
 
-use drivers::{init_device, print, println};
+extern crate alloc;
+
+use alloc::boxed::Box;
+use drivers::init_device;
 
 mod lang;
 mod sbi;
+mod config;
+mod batch;
+mod console;
+mod trap;
+mod stack;
+mod syscall;
+mod sync;
+mod mem;
 
 const BOOTLOADER_STACK_SIZE: usize = 4096;
 
 #[link_section = ".bss"]
 static mut BOOTLOADER_STACK: [u8; BOOTLOADER_STACK_SIZE] = [0; BOOTLOADER_STACK_SIZE];
 
-#[no_mangle]
-#[naked]
-#[link_section = ".text.entry"]
 /// Start point of the kernel
 ///
 /// Use it to override the default _start by rust compiler.
 /// Note that this function has to be marked as `naked` to avoid the prologue and epilogue, otherwise it may not be placed at the start address of qemu
+#[no_mangle]
+#[naked]
+#[link_section = ".text.entry"]
 unsafe extern "C" fn _start() -> ! {
     // This is the entry point of the kernel
     asm!(
@@ -35,8 +46,10 @@ unsafe extern "C" fn _start() -> ! {
         bootloader_stack = sym BOOTLOADER_STACK,
         rust_init = sym rust_init,
         options(noreturn)
-    );
+    )
 }
+
+global_asm!(include_str!("link_app.S"));
 
 #[no_mangle]
 extern "C" fn rust_init() -> ! {
@@ -46,8 +59,8 @@ extern "C" fn rust_init() -> ! {
 
 fn rust_main() -> ! {
     println!("Hello, world!");
-    println!("This is the {} message", 1);
-    panic!("This is a panic message")
+    trap::init();
+    batch::run_next_app();
 }
 
 /// This function is made only to make `cargo test` and analyzer happy
