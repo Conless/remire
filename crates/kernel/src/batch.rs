@@ -5,7 +5,7 @@
 
 use core::arch::asm;
 
-use crate::{config::*, stack::KERNEL_STACK, sync::UPSafeCell, trap::TrapContext};
+use crate::{config::*, println, sbi::shutdown, stack::{KERNEL_STACK, USER_STACK}, sync::UPSafeCell, trap::TrapContext};
 use lazy_static::lazy_static;
 
 struct AppManager {
@@ -15,22 +15,33 @@ struct AppManager {
 }
 
 impl AppManager {
-    unsafe fn run(&mut self) {
-        self.current_app += 1;
-        if self.current_app >= self.app_count {
-            panic!("[kernel] No more application to run!");
+    pub fn print_info(&self) {
+        println!("[kernel] num_app = {}", self.app_count);
+        for i in 0..self.app_count {
+            println!(
+                "[kernel] app_{} [{:#x}, {:#x})",
+                i,
+                self.app_addr[i],
+                self.app_addr[i + 1]
+            );
         }
-        let app_addr = self.app_addr[self.current_app];
-        let app_src = 
-            core::slice::from_raw_parts(
-                app_addr as *const u8,
-                self.app_addr[self.current_app + 1] - app_addr,
-            )
-        ;
-        let app_dst =
-             core::slice::from_raw_parts_mut(APP_BASE_ADDRESS as *mut u8, app_src.len()) ;
+    }
+
+    pub unsafe fn run(&mut self) {
+        if self.current_app >= self.app_count {
+            println!("All applications completed!");
+            shutdown(false);
+        }
+        println!("[kernel] Loading app_{}", self.current_app);
+        core::slice::from_raw_parts_mut(APP_BASE_ADDRESS as *mut u8, APP_SIZE_LIMIT).fill(0);
+        let app_src = core::slice::from_raw_parts(
+            self.app_addr[self.current_app] as *const u8,
+            self.app_addr[self.current_app + 1] - self.app_addr[self.current_app],
+        );
+        let app_dst = core::slice::from_raw_parts_mut(APP_BASE_ADDRESS as *mut u8, app_src.len());
         app_dst.copy_from_slice(app_src);
         asm!("fence.i");
+        self.current_app += 1;
     }
 }
 
@@ -65,7 +76,7 @@ pub fn run_next_app() -> ! {
     unsafe {
         __restore(KERNEL_STACK.push_context(TrapContext::app_init_context(
             APP_BASE_ADDRESS,
-            APP_SIZE_LIMIT,
+            USER_STACK.get_sp(),
         )) as *const TrapContext as usize);
     }
     unreachable!()
