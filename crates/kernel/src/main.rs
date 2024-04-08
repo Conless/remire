@@ -15,7 +15,7 @@ extern crate alloc;
 use alloc::boxed::Box;
 use drivers::init_device;
 
-use crate::mem::HEAP_ALLOCATOR;
+use crate::mem::{UpBuddyAllocator, HEAP_ALLOCATOR};
 
 mod lang;
 mod sbi;
@@ -28,39 +28,16 @@ mod syscall;
 mod sync;
 mod mem;
 
-const BOOTLOADER_STACK_SIZE: usize = 4096;
-
-#[link_section = ".bss"]
-static mut BOOTLOADER_STACK: [u8; BOOTLOADER_STACK_SIZE] = [0; BOOTLOADER_STACK_SIZE];
-
-/// Start point of the kernel
-///
-/// Use it to override the default _start by rust compiler.
-/// Note that this function has to be marked as `naked` to avoid the prologue and epilogue, otherwise it may not be placed at the start address of qemu
-#[no_mangle]
-#[naked]
-#[link_section = ".text.entry"]
-unsafe extern "C" fn _start() -> ! {
-    // This is the entry point of the kernel
-    asm!(
-        "la sp, {bootloader_stack}",
-        "j {rust_init}",
-        bootloader_stack = sym BOOTLOADER_STACK,
-        rust_init = sym rust_init,
-        options(noreturn)
-    )
-}
-
+global_asm!(include_str!("entry.S"));
 global_asm!(include_str!("link_app.S"));
 
 #[no_mangle]
 extern "C" fn rust_init() -> ! {
-    init_device();
+    // init_device();
     rust_main()
 }
 
 fn rust_main() -> ! {
-    println!("Hello, world!");
     HEAP_ALLOCATOR.init();
     Box::new(1);
     trap::init();

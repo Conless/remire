@@ -15,7 +15,7 @@ fn panic_handler(info: &PanicInfo) -> ! {
     // This is a simple panic handler that just prints the panic message to the serial port
     if let Some(location) = info.location() {
         println!(
-            "Panicked at {}: {} {}",
+            "Panicked at {}:{} {}",
             location.file(),
             location.line(),
             info.message().unwrap()
