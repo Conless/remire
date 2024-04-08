@@ -6,7 +6,7 @@
 #![no_std]
 #![no_main]
 // #![deny(warnings)]
-#![feature(naked_functions, asm_const, panic_info_message)]
+#![feature(naked_functions, asm_const, panic_info_message, arbitrary_self_types)]
 
 use core::arch::{asm, global_asm};
 
@@ -14,6 +14,8 @@ extern crate alloc;
 
 use alloc::boxed::Box;
 use drivers::init_device;
+
+use crate::mem::HEAP_ALLOCATOR;
 
 mod lang;
 mod sbi;
@@ -59,6 +61,8 @@ extern "C" fn rust_init() -> ! {
 
 fn rust_main() -> ! {
     println!("Hello, world!");
+    HEAP_ALLOCATOR.init();
+    Box::new(1);
     trap::init();
     batch::run_next_app();
 }
