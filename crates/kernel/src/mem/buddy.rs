@@ -22,7 +22,7 @@ pub struct BuddyAllocator {
 impl BuddyAllocator {
     /// Helper function for splitting into lower layers
     fn split(&mut self, from: usize, to: usize) {
-        for i in (to+1..from).rev() {
+        for i in (to+1..from+1).rev() {
             if let Some(block) = self.free_list[i].pop_min() {
                 self.free_list[i - 1].insert(block);
                 self.free_list[i - 1].insert(block + (1 << (i - 1)));
