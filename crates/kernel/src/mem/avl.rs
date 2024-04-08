@@ -8,19 +8,20 @@ use core::{
     ptr::{null, null_mut},
 };
 
-pub struct AVLTree<T: PartialOrd + Copy>(*mut AVLTreeNode<T>);
+#[derive(Clone, Copy)]
+pub struct AVLTree<T: PartialOrd + Copy + Default>(*mut AVLTreeNode<T>);
 
 /// AVL Tree Node
-/// 
+///
 /// This struct is used to represent a node in AVL Tree. The `data` field may be replaced by the address of the node.
-struct AVLTreeNode<T: PartialOrd + Copy> {
+struct AVLTreeNode<T: PartialOrd + Copy + Default> {
     data: T,
     height: usize,
     left: *mut AVLTreeNode<T>,
     right: *mut AVLTreeNode<T>,
 }
 
-impl<T: PartialOrd + Copy> AVLTreeNode<T> {
+impl<T: PartialOrd + Copy + Default> AVLTreeNode<T> {
     fn init(&mut self, data: T) {
         self.data = data;
         self.height = 1;
@@ -29,7 +30,7 @@ impl<T: PartialOrd + Copy> AVLTreeNode<T> {
     }
 }
 
-impl<T: PartialOrd + Copy> AVLTree<T> {
+impl<T: PartialOrd + Copy + Default> AVLTree<T> {
     /// Get the height of the current node
     fn get_height(node: *mut AVLTreeNode<T>) -> usize {
         if node.is_null() {
@@ -39,14 +40,14 @@ impl<T: PartialOrd + Copy> AVLTree<T> {
     }
 
     /// Perform a LL rotation
-    /// 
+    ///
     /// LL(Y rotates to the left):
     ///    k2                     k1
     ///   / \                    / \
     ///   X  k1       ======     k2  Z
     ///  / \                    / \
     /// Y  Z                   X   Y
-    fn ll_rotate(mut node: *mut AVLTreeNode<T>) {
+    fn ll_rotate(node: *mut AVLTreeNode<T>) -> *mut AVLTreeNode<T> {
         unsafe {
             let new_root = (*node).left;
             (*node).left = (*new_root).right;
@@ -59,19 +60,19 @@ impl<T: PartialOrd + Copy> AVLTree<T> {
                 Self::get_height((*new_root).left),
                 Self::get_height((*new_root).right),
             ) + 1;
-            node = new_root;
+            new_root
         }
     }
 
     /// Perform a RR rotation
-    /// 
+    ///
     /// RR(Y rotates to the right):
     ///        k2                 k1
     ///       / \                / \
     ///      k1  Z     ======   X  k2
     ///     / \                    / \
     ///    X   Y                  Y   Z
-    fn rr_rotate(mut node: *mut AVLTreeNode<T>) {
+    fn rr_rotate(node: *mut AVLTreeNode<T>) -> *mut AVLTreeNode<T> {
         unsafe {
             let new_root = (*node).right;
             (*node).right = (*new_root).left;
@@ -84,12 +85,12 @@ impl<T: PartialOrd + Copy> AVLTree<T> {
                 Self::get_height((*new_root).left),
                 Self::get_height((*new_root).right),
             ) + 1;
-            node = new_root;
+            new_root
         }
     }
 
     /// Perform a LR rotation
-    /// 
+    ///
     /// LR(B rotates to the left, then C rotates to the right):
     ///     k3                       k3                    k2
     ///     / \                      / \                   / \
@@ -98,27 +99,27 @@ impl<T: PartialOrd + Copy> AVLTree<T> {
     ///  A   k2                   k1  C                 A  B C   D
     ///     / \                 / \
     ///    B  C                A   B
-    fn lr_rotate(mut node: *mut AVLTreeNode<T>) {
+    fn lr_rotate(node: *mut AVLTreeNode<T>) -> *mut AVLTreeNode<T> {
         unsafe {
-            Self::rr_rotate((*node).left);
-            Self::ll_rotate(node);
+            (*node).left = Self::rr_rotate((*node).left);
+            Self::ll_rotate(node)
         }
     }
 
     /// Perform a RL rotation
-    /// 
+    ///
     /// RL(D rotates to the right, then C rotates to the left):
     ///   k3                      k3                       k2
     ///  / \                     / \                      / \
-    /// A  k1                   A   k2                   k3  k1 
+    /// A  k1                   A   k2                   k3  k1
     ///    / \      ======          / \        ======    / \ / \
     ///   k2  B                    C   k1               A  C D  B
     ///   / \                         / \
-    ///  C   D                       D   B 
-    fn rl_rotate(mut node: *mut AVLTreeNode<T>) {
+    ///  C   D                       D   B
+    fn rl_rotate(node: *mut AVLTreeNode<T>) -> *mut AVLTreeNode<T> {
         unsafe {
-            Self::ll_rotate((*node).right);
-            Self::rr_rotate(node);
+            (*node).right = Self::ll_rotate((*node).right);
+            Self::rr_rotate(node)
         }
     }
 
@@ -137,92 +138,107 @@ impl<T: PartialOrd + Copy> AVLTree<T> {
     }
 
     /// Insert a node in the current subtree
-    fn insert_in_node(mut node: *mut AVLTreeNode<T>, tmp: *mut AVLTreeNode<T>) {
+    fn insert_in_node(
+        mut node: *mut AVLTreeNode<T>,
+        tmp: *mut AVLTreeNode<T>,
+    ) -> *mut AVLTreeNode<T> {
         if node.is_null() {
-            node = tmp;
-            return;
+            return tmp;
         }
-        if unsafe { (*tmp).data } < unsafe { (*node).data } { // Insert in left subtree
+        if unsafe { (*tmp).data } < unsafe { (*node).data } {
+            // Insert in left subtree
             Self::insert_in_node(unsafe { (*node).left }, tmp);
             if Self::get_height(unsafe { (*node).left })
                 - Self::get_height(unsafe { (*node).right })
                 == 2
             {
                 if unsafe { (*tmp).data } < unsafe { &*(*node).left }.data {
-                    Self::ll_rotate(node);
+                    node = Self::ll_rotate(node)
                 } else {
-                    Self::lr_rotate(node);
+                    node = Self::lr_rotate(node)
                 }
             }
-        } else if unsafe { (*tmp).data } > unsafe { (*node).data } { // Insert in right subtree
+        } else if unsafe { (*tmp).data } > unsafe { (*node).data } {
+            // Insert in right subtree
             Self::insert_in_node(unsafe { (*node).right }, tmp);
             if Self::get_height(unsafe { (*node).right })
                 - Self::get_height(unsafe { (*node).left })
                 == 2
             {
                 if unsafe { (*tmp).data } > unsafe { &*(*node).right }.data {
-                    Self::rr_rotate(node);
+                    node = Self::rr_rotate(node);
                 } else {
-                    Self::rl_rotate(node);
+                    node = Self::rl_rotate(node);
                 }
             }
         }
         unsafe {
-            (*node).height = max( // Update the height of the current node
+            (*node).height = max(
+                // Update the height of the current node
                 Self::get_height((*node).left),
                 Self::get_height((*node).right),
             ) + 1;
         }
+        node
     }
 
     /// Adjust the height after removing a node
-    fn adjust(mut node: *mut AVLTreeNode<T>, sub_tree: bool) -> bool {
+    fn adjust(node: *mut AVLTreeNode<T>, sub_tree: bool) -> (bool, *mut AVLTreeNode<T>) {
         let left_height = Self::get_height(unsafe { (*node).left });
         let right_height = Self::get_height(unsafe { (*node).right });
-        if sub_tree { // Delete on right sub tree to make it shorter
+        if sub_tree {
+            // Delete on right sub tree to make it shorter
             if left_height - right_height == 1 {
-                return true;
+                return (true, node);
             }
             if left_height == right_height {
                 unsafe {
                     (*node).height -= 1;
-                    return false;
+                    return (false, node);
                 }
             }
-            if Self::get_height(unsafe { (*(*node).left).right }) > Self::get_height(unsafe { (*(*node).left).left }) {
-                Self::lr_rotate(node);
-                false
+            if Self::get_height(unsafe { (*(*node).left).right })
+                > Self::get_height(unsafe { (*(*node).left).left })
+            {
+                (false, Self::lr_rotate(node))
             } else {
-                Self::ll_rotate(node);
-                Self::get_height(unsafe { (*node).right }) == Self::get_height(unsafe { (*node).left })
+                (
+                    Self::get_height(unsafe { (*node).right })
+                        == Self::get_height(unsafe { (*node).left }),
+                    Self::ll_rotate(node),
+                )
             }
-        } else { // Delete on left sub tree to make it shorter
+        } else {
+            // Delete on left sub tree to make it shorter
             if right_height - left_height == 1 {
-                return true;
+                return (true, node);
             }
             if left_height == right_height {
                 unsafe {
                     (*node).height -= 1;
-                    return false;
+                    return (false, node);
                 }
             }
-            if Self::get_height(unsafe { (*(*node).right).left }) > Self::get_height(unsafe { (*(*node).right).right }) {
-                Self::rl_rotate(node);
-                false
+            if Self::get_height(unsafe { (*(*node).right).left })
+                > Self::get_height(unsafe { (*(*node).right).right })
+            {
+                (false, Self::rl_rotate(node))
             } else {
-                Self::rr_rotate(node);
-                Self::get_height(unsafe { (*node).right }) == Self::get_height(unsafe { (*node).left })
+                (
+                    Self::get_height(unsafe { (*node).right })
+                        == Self::get_height(unsafe { (*node).left }),
+                    Self::rr_rotate(node),
+                )
             }
-
         }
     }
-        
 
-    fn delete_in_node(mut node: *mut AVLTreeNode<T>, data: T) -> bool {
+    fn delete_in_node(mut node: *mut AVLTreeNode<T>, data: T) -> (bool, *mut AVLTreeNode<T>, bool) {
         if node.is_null() {
-            return true;
+            return (true, node, false);
         }
-        if data == unsafe { (*node).data } { // Delete current node
+        if data == unsafe { (*node).data } {
+            // Delete current node
             if !unsafe { (*node).left }.is_null() && !unsafe { (*node).right }.is_null() {
                 let mut tmp = unsafe { (*node).right };
                 while !unsafe { (*tmp).left }.is_null() {
@@ -233,13 +249,16 @@ impl<T: PartialOrd + Copy> AVLTree<T> {
                     (*tmp).right = (*node).right;
                     (*tmp).height = (*node).height;
                 }
-                if Self::delete_in_node(unsafe { (*node).right }, unsafe { (*tmp).data }) {
-                    true
-                } else {
-                    Self::adjust(node, false)
+                let (mut flag, son, status) =
+                    Self::delete_in_node(unsafe { (*node).right }, unsafe { (*tmp).data });
+                unsafe {
+                    (*node).right = son;
                 }
-            }
-            else {
+                if !flag {
+                    (flag, node) = Self::adjust(node, false);
+                }
+                (flag, node, status)
+            } else {
                 let tmp = node;
                 if unsafe { (*node).left }.is_null() {
                     node = unsafe { (*node).right };
@@ -249,14 +268,79 @@ impl<T: PartialOrd + Copy> AVLTree<T> {
                 unsafe {
                     core::ptr::drop_in_place(tmp);
                 }
-                false
+                (false, node, true)
             }
-        } else if (data < unsafe { (*node).data } && Self::delete_in_node(unsafe { (*node).left }, data))
-            || (data > unsafe { (*node).data } && Self::delete_in_node(unsafe { (*node).right }, data))
-        {
-            true
         } else {
-            Self::adjust(node, data > unsafe { (*node).data })
+            let (mut flag, son, status) = if data < unsafe { (*node).data } {
+                Self::delete_in_node(unsafe { (*node).left }, data)
+            } else {
+                Self::delete_in_node(unsafe { (*node).right }, data)
+            };
+            unsafe {
+                if data < (*node).data {
+                    (*node).left = son;
+                } else {
+                    (*node).right = son;
+                }
+            }
+            if !flag {
+                (flag, node) = Self::adjust(node, data > unsafe { (*node).data });
+            }
+            (flag, node, status)
         }
+    }
+
+    fn delete_min_in_node(mut node: *mut AVLTreeNode<T>) -> (bool, *mut AVLTreeNode<T>, T) {
+        if node.is_null() {
+            return (false, node, T::default());
+        }
+        unsafe {
+            if (*node).left.is_null() {
+                (false, (*node).right, (*node).data)
+            } else {
+                let (mut flag, left, data) = Self::delete_min_in_node((*node).left);
+                (*node).left = left;
+                if flag {
+                    (flag, node) = Self::adjust(node, false);
+                }
+                (flag, node, data)
+            }
+        }
+    }
+}
+
+impl AVLTree<usize> {
+    /// Create a new AVL Tree
+    pub const fn new() -> Self {
+        Self(null_mut())
+    }
+
+    pub fn insert(&mut self, data: usize) {
+        let node = data as *mut AVLTreeNode<usize>;
+        (unsafe { &mut *node }).data = data;
+        self.0 = AVLTree::insert_in_node(self.0, node);
+    }
+
+    pub fn find(&self, data: usize) -> bool {
+        AVLTree::find_in_node(self.0, data)
+    }
+
+    pub fn delete(&mut self, data: usize) -> bool {
+        let (flag, node, _) = AVLTree::delete_in_node(self.0, data);
+        self.0 = node;
+        flag
+    }
+
+    pub fn pop_min(&mut self) -> Option<usize> {
+        if self.is_empty() {
+            return None;
+        }
+        let (_, node, data) = AVLTree::delete_min_in_node(self.0);
+        self.0 = node;
+        Some(data)
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.0.is_null()
     }
 }

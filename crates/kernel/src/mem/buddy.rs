@@ -22,7 +22,7 @@ pub struct BuddyAllocator {
 impl BuddyAllocator {
     /// Helper function for splitting into lower layers
     fn split(&mut self, from: usize, to: usize) {
-        for i in (from + 1..to).rev() {
+        for i in (to+1..from).rev() {
             if let Some(block) = self.free_list[i].pop_min() {
                 self.free_list[i - 1].insert(block);
                 self.free_list[i - 1].insert(block + (1 << (i - 1)));
@@ -59,16 +59,10 @@ impl BuddyAllocator {
         }
     }
 
-    pub unsafe fn new(gran: usize, start: usize, end: usize) -> Self {
-        let mut allocator = Self::empty();
-        allocator.add_segment(start, end);
-        allocator
-    }
-
     pub unsafe fn add_segment(&mut self, mut start: usize, mut end: usize) {
         let align = size_of::<usize>();
         start = (start + align - 1) & !(align - 1);
-        end = end & !(align - 1);
+        end &= !(align - 1);
         self.total += end - start;
 
         while start < end {
