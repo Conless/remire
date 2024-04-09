@@ -5,4 +5,5 @@
 
 mod address;
 mod page_table;
-mod frame_allocator;
+mod frame;
+mod stack_allocator;
