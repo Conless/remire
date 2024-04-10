@@ -3,10 +3,14 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
+use alloc::vec;
 use alloc::vec::Vec;
 use bitflags::*;
 
-use super::{address::{PhysPageNum, VirtPageNum}, frame::{frame_alloc, FrameGuard}};
+use super::{
+    address::{PhysPageNum, VirtAddr, VirtPageNum},
+    frame::{frame_alloc, FrameGuard},
+};
 
 bitflags! {
     /// Page table entry flags
@@ -79,4 +83,96 @@ impl PageTableEntry {
 pub struct PageTable {
     root_ppn: PhysPageNum,
     frames: Vec<FrameGuard>,
+}
+
+impl PageTable {
+    /// Create a new page table
+    /// 
+    /// Used when create a new memory space
+    pub fn new() -> Self {
+        let frame = frame_alloc().expect("[memory] failed to allocate frame");
+        PageTable {
+            root_ppn: frame.ppn,
+            frames: vec![frame],
+        }
+    }
+
+    /// Find or create a page table entry by virtual page number
+    fn find_create_entry(&mut self, vpn: VirtPageNum) -> Option<&mut PageTableEntry> {
+        let idx = vpn.indexes();
+        let mut ppn = self.root_ppn;
+        let mut result = None;
+        for (i, idx) in idx.iter().enumerate() {
+            let entry = &mut ppn.get_pte_array()[*idx];
+            if i == 2 { // Leaf node
+                result = Some(entry);
+                break;
+            }
+            if !entry.is_valid() { // Not found
+                let new_frame = frame_alloc().expect("[memory] failed to allocate frame");
+                *entry = PageTableEntry::new(new_frame.ppn, PTEFlags::V);
+                self.frames.push(new_frame);
+            }
+            ppn = entry.ppn();
+        }
+        result
+    }
+
+    /// Find a page table entry by virtual page number
+    fn find_entry(&self, vpn: VirtPageNum) -> Option<&mut PageTableEntry> {
+        let idx = vpn.indexes();
+        let mut ppn = self.root_ppn;
+        for (i, idx) in idx.iter().enumerate() {
+            let entry = &mut ppn.get_pte_array()[*idx];
+            if i == 2 { // Leaf node
+                return Some(entry);
+            }
+            if !entry.is_valid() { // Not found
+                return None;
+            }
+            ppn = entry.ppn();
+        }
+        unreachable!()
+    }
+
+    /// Map a virtual page number to a physical page number
+    pub fn map(&mut self, vpn: VirtPageNum, ppn: PhysPageNum, flags: PTEFlags) {
+        let entry = self.find_create_entry(vpn).expect("[memory] failed to create page table entry");
+        if entry.is_valid() {
+            panic!("[memory] virtual address {:#x} is already mapped", vpn.0);
+        }
+        *entry = PageTableEntry::new(ppn, flags | PTEFlags::V);
+    }
+
+    /// Unmap a virtual page number
+    pub fn unmap(&mut self, vpn: VirtPageNum) {
+        let entry = self.find_entry(vpn).expect("[memory] failed to find page table entry");
+        if !entry.is_valid() {
+            panic!("[memory] virtual address {:#x} is not mapped", vpn.0);
+        }
+        *entry = PageTableEntry::empty();
+    }
+
+    /// Find the physical page number of a virtual page number
+    pub fn translate(&self, vpn: VirtPageNum) -> Option<PageTableEntry> {
+        self.find_entry(vpn).map(|entry| *entry)
+    }
+}
+
+impl From<usize> for PageTable {
+    /// Create a page table from a satp value
+    /// 
+    /// Please ensure the satp value is valid
+    fn from(satp: usize) -> Self {
+        PageTable {
+            root_ppn: PhysPageNum(satp & ((1usize << 44) - 1)),
+            frames: Vec::new(),
+        }
+    }
+}
+
+impl Into<usize> for PageTable {
+    fn into(self) -> usize {
+        self.root_ppn.0
+    }
 }
