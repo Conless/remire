@@ -7,7 +7,7 @@
 
 use crate::config::{PAGE_SIZE, PAGE_SIZE_BITS};
 
-use super::page_table::PageTableEntry;
+use super::{page_table::PageTableEntry, range::{Range, StepByOne}};
 
 /// Configuration for SV39 page table
 const PA_WIDTH_SV39: usize = 56;
@@ -157,6 +157,14 @@ impl VirtPageNum {
         idx
     }
 }
+impl StepByOne for VirtPageNum {
+    fn step(&mut self) {
+        self.0 += 1;
+    }
+
+}
+
+pub type VPNRange = Range<VirtPageNum>;
 
 impl PhysPageNum {
     /// Get the corresponding page table entry
