@@ -3,26 +3,23 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use core::{
-    cmp::max,
-    ptr::{null, null_mut},
-};
+use core::cmp::max;
 
 #[derive(Clone, Copy)]
-pub struct AVLTree<T: PartialOrd + Copy + Default>(*mut AVLTreeNode<T>);
+pub struct AVLTree(usize);
 
 /// AVL Tree Node
 ///
 /// This struct is used to represent a node in AVL Tree. The `data` field may be replaced by the address of the node.
-struct AVLTreeNode<T: PartialOrd + Copy + Default> {
-    data: T,
+struct AVLTreeNode {
+    data: usize,
     height: usize,
-    left: *mut AVLTreeNode<T>,
-    right: *mut AVLTreeNode<T>,
+    left: *mut AVLTreeNode,
+    right: *mut AVLTreeNode,
 }
 
-impl<T: PartialOrd + Copy + Default> AVLTreeNode<T> {
-    fn init(&mut self, data: T) {
+impl AVLTreeNode {
+    fn init(&mut self, data: usize) {
         self.data = data;
         self.height = 1;
         self.left = core::ptr::null_mut();
@@ -30,9 +27,9 @@ impl<T: PartialOrd + Copy + Default> AVLTreeNode<T> {
     }
 }
 
-impl<T: PartialOrd + Copy + Default> AVLTree<T> {
+impl AVLTree {
     /// Get the height of the current node
-    fn get_height(node: *mut AVLTreeNode<T>) -> usize {
+    fn get_height(node: *mut AVLTreeNode) -> usize {
         if node.is_null() {
             return 0;
         }
@@ -47,7 +44,7 @@ impl<T: PartialOrd + Copy + Default> AVLTree<T> {
     ///   X  k1       ======     k2  Z
     ///  / \                    / \
     /// Y  Z                   X   Y
-    fn ll_rotate(node: *mut AVLTreeNode<T>) -> *mut AVLTreeNode<T> {
+    fn ll_rotate(node: *mut AVLTreeNode) -> *mut AVLTreeNode {
         unsafe {
             let new_root = (*node).left;
             (*node).left = (*new_root).right;
@@ -72,7 +69,7 @@ impl<T: PartialOrd + Copy + Default> AVLTree<T> {
     ///      k1  Z     ======   X  k2
     ///     / \                    / \
     ///    X   Y                  Y   Z
-    fn rr_rotate(node: *mut AVLTreeNode<T>) -> *mut AVLTreeNode<T> {
+    fn rr_rotate(node: *mut AVLTreeNode) -> *mut AVLTreeNode {
         unsafe {
             let new_root = (*node).right;
             (*node).right = (*new_root).left;
@@ -99,7 +96,7 @@ impl<T: PartialOrd + Copy + Default> AVLTree<T> {
     ///  A   k2                   k1  C                 A  B C   D
     ///     / \                 / \
     ///    B  C                A   B
-    fn lr_rotate(node: *mut AVLTreeNode<T>) -> *mut AVLTreeNode<T> {
+    fn lr_rotate(node: *mut AVLTreeNode) -> *mut AVLTreeNode {
         unsafe {
             (*node).left = Self::rr_rotate((*node).left);
             Self::ll_rotate(node)
@@ -116,7 +113,7 @@ impl<T: PartialOrd + Copy + Default> AVLTree<T> {
     ///   k2  B                    C   k1               A  C D  B
     ///   / \                         / \
     ///  C   D                       D   B
-    fn rl_rotate(node: *mut AVLTreeNode<T>) -> *mut AVLTreeNode<T> {
+    fn rl_rotate(node: *mut AVLTreeNode) -> *mut AVLTreeNode {
         unsafe {
             (*node).right = Self::ll_rotate((*node).right);
             Self::rr_rotate(node)
@@ -124,7 +121,7 @@ impl<T: PartialOrd + Copy + Default> AVLTree<T> {
     }
 
     /// Find a node in the current subtree
-    fn find_in_node(node: *mut AVLTreeNode<T>, data: T) -> bool {
+    fn find_in_node(node: *mut AVLTreeNode, data: usize) -> bool {
         if node.is_null() {
             return false;
         }
@@ -139,9 +136,9 @@ impl<T: PartialOrd + Copy + Default> AVLTree<T> {
 
     /// Insert a node in the current subtree
     fn insert_in_node(
-        mut node: *mut AVLTreeNode<T>,
-        tmp: *mut AVLTreeNode<T>,
-    ) -> *mut AVLTreeNode<T> {
+        mut node: *mut AVLTreeNode,
+        tmp: *mut AVLTreeNode,
+    ) -> *mut AVLTreeNode {
         if node.is_null() {
             return tmp;
         }
@@ -183,7 +180,7 @@ impl<T: PartialOrd + Copy + Default> AVLTree<T> {
     }
 
     /// Adjust the height after removing a node
-    fn adjust(node: *mut AVLTreeNode<T>, sub_tree: bool) -> (bool, *mut AVLTreeNode<T>) {
+    fn adjust(node: *mut AVLTreeNode, sub_tree: bool) -> (bool, *mut AVLTreeNode) {
         let left_height = Self::get_height(unsafe { (*node).left });
         let right_height = Self::get_height(unsafe { (*node).right });
         if sub_tree {
@@ -233,7 +230,7 @@ impl<T: PartialOrd + Copy + Default> AVLTree<T> {
         }
     }
 
-    fn delete_in_node(mut node: *mut AVLTreeNode<T>, data: T) -> (bool, *mut AVLTreeNode<T>, bool) {
+    fn delete_in_node(mut node: *mut AVLTreeNode, data: usize) -> (bool, *mut AVLTreeNode, bool) {
         if node.is_null() {
             return (true, node, false);
         }
@@ -290,9 +287,9 @@ impl<T: PartialOrd + Copy + Default> AVLTree<T> {
         }
     }
 
-    fn delete_min_in_node(mut node: *mut AVLTreeNode<T>) -> (bool, *mut AVLTreeNode<T>, T) {
+    fn delete_min_in_node(mut node: *mut AVLTreeNode) -> (bool, *mut AVLTreeNode, usize) {
         if node.is_null() {
-            return (false, node, T::default());
+            return (false, node, usize::default());
         }
         unsafe {
             if (*node).left.is_null() {
@@ -309,25 +306,25 @@ impl<T: PartialOrd + Copy + Default> AVLTree<T> {
     }
 }
 
-impl AVLTree<usize> {
+impl AVLTree {
     /// Create a new AVL Tree
     pub const fn new() -> Self {
-        Self(null_mut())
+        Self(0usize)
     }
 
     pub fn insert(&mut self, data: usize) {
-        let node = data as *mut AVLTreeNode<usize>;
+        let node = data as *mut AVLTreeNode;
         (unsafe { &mut *node }).data = data;
-        self.0 = AVLTree::insert_in_node(self.0, node);
+        self.0 = AVLTree::insert_in_node(self.0 as *mut AVLTreeNode, node) as usize;
     }
 
     pub fn find(&self, data: usize) -> bool {
-        AVLTree::find_in_node(self.0, data)
+        AVLTree::find_in_node(self.0 as *mut AVLTreeNode, data)
     }
 
     pub fn delete(&mut self, data: usize) -> bool {
-        let (flag, node, _) = AVLTree::delete_in_node(self.0, data);
-        self.0 = node;
+        let (flag, node, _) = AVLTree::delete_in_node(self.0 as *mut AVLTreeNode, data);
+        self.0 = node as usize;
         flag
     }
 
@@ -335,12 +332,12 @@ impl AVLTree<usize> {
         if self.is_empty() {
             return None;
         }
-        let (_, node, data) = AVLTree::delete_min_in_node(self.0);
-        self.0 = node;
+        let (_, node, data) = AVLTree::delete_min_in_node(self.0 as *mut AVLTreeNode);
+        self.0 = node as usize;
         Some(data)
     }
 
     pub fn is_empty(&self) -> bool {
-        self.0.is_null()
+        self.0 == 0
     }
 }

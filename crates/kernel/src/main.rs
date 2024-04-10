@@ -15,7 +15,7 @@ extern crate alloc;
 use alloc::boxed::Box;
 use drivers::init_device;
 
-use crate::mem::{UpBuddyAllocator, HEAP_ALLOCATOR};
+use crate::mem::HEAP_ALLOCATOR;
 
 mod lang;
 mod sbi;
@@ -27,6 +27,7 @@ mod stack;
 mod syscall;
 mod sync;
 mod mem;
+mod addr;
 
 global_asm!(include_str!("entry.S"));
 global_asm!(include_str!("link_app.S"));
@@ -39,8 +40,15 @@ extern "C" fn rust_init() -> ! {
 
 fn rust_main() -> ! {
     HEAP_ALLOCATOR.init();
-    Box::new(1);
     trap::init();
+    Box::new(1);
+    Box::new(1);
+    Box::new(1);
+    Box::new(1);
+    Box::new(1);
+    Box::new(1);
+    Box::new(1);
+    Box::new(1);
     batch::run_next_app();
 }
 

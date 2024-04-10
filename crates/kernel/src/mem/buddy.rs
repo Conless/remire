@@ -5,13 +5,15 @@
 
 use core::{alloc::Layout, clone, cmp::{max, min}, mem::size_of};
 
+use crate::println;
+
 use super::avl::AVLTree;
 
 const BUDDY_ALLOCATOR_LEVEL: usize = 32;
 
 pub struct BuddyAllocator {
     // Unallocated memory
-    free_list: [AVLTree<usize>; BUDDY_ALLOCATOR_LEVEL],
+    free_list: [AVLTree; BUDDY_ALLOCATOR_LEVEL],
 
     // Statistics
     user: usize,
@@ -85,6 +87,7 @@ impl BuddyAllocator {
                 let result = self.free_list[level].pop_min().expect("[allocator] Expect non-empty free list.");
 
                 // Maintain statistics
+                println!("[allocator] allocated: {:#x}, user: {:#x}", self.allocated, self.user);
                 self.user += size;
                 self.allocated += size;
                 return result as *mut u8;
