@@ -14,7 +14,7 @@ pub fn get_num_app() -> usize {
   unsafe { (_num_app as usize as *const usize).read_volatile() }
 }
 
-fn get_app_addr(app_id: usize) -> usize {
+pub fn get_app_addr(app_id: usize) -> usize {
   APP_BASE_ADDRESS + app_id * APP_SIZE_LIMIT
 }
 

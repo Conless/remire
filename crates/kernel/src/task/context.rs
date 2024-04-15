@@ -3,12 +3,15 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use crate::trap::trap_return;
+use crate::{stack::{KERNEL_STACK, USER_STACK}, trap::TrapContext};
+
+use super::loader::get_app_addr;
 
 /// Task Context
-/// 
+///
 /// This struct is used to store the context of a task, containing the return address of the task, the stack pointer of the task, and the callee-saved registers.
 #[repr(C)]
+#[derive(Clone, Copy)]
 pub struct TaskContext {
     ra: usize,
     sp: usize,
@@ -24,11 +27,21 @@ impl TaskContext {
         }
     }
 
-    pub fn trap_return(sp: usize) -> Self {
+    pub fn restore(sp: usize) -> Self {
+        extern "C" {
+            fn __restore();
+        }
         Self {
-            ra: trap_return as usize,
+            ra: __restore as usize,
             sp,
             s: [0; 12],
         }
     }
+}
+
+pub fn init_app(app_id: usize) -> usize {
+    KERNEL_STACK[app_id].push_context(TrapContext::app_init_context(
+        get_app_addr(app_id),
+        USER_STACK[app_id].get_sp(),
+    ))
 }
