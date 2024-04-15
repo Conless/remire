@@ -20,12 +20,12 @@ use crate::mem::HEAP_ALLOCATOR;
 mod lang;
 mod sbi;
 mod config;
-mod batch;
 mod console;
 mod trap;
 mod stack;
 mod syscall;
 mod sync;
+mod task;
 mod mem;
 mod addr;
 
@@ -40,16 +40,11 @@ extern "C" fn rust_init() -> ! {
 
 fn rust_main() -> ! {
     HEAP_ALLOCATOR.init();
+    println!("[kernel] Hello, World!");
     trap::init();
-    Box::new(1);
-    Box::new(1);
-    Box::new(1);
-    Box::new(1);
-    Box::new(1);
-    Box::new(1);
-    Box::new(1);
-    Box::new(1);
-    batch::run_next_app();
+    task::load_apps();
+    trap::enable_timer_interrupt();
+    task::run_first_task()
 }
 
 /// This function is made only to make `cargo test` and analyzer happy

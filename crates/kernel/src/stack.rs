@@ -6,22 +6,24 @@
 use crate::{config::*, trap::TrapContext};
 
 #[repr(align(4096))]
+#[derive(Clone, Copy)]
 pub struct KernelStack {
     data: [u8; KERNEL_STACK_SIZE],
 }
 
 #[repr(align(4096))]
+#[derive(Clone, Copy)]
 pub struct UserStack {
     data: [u8; USER_STACK_SIZE],
 }
 
-pub static KERNEL_STACK: KernelStack = KernelStack {
+pub static KERNEL_STACK: [KernelStack; APP_MAX_NUM] = [KernelStack {
     data: [0; KERNEL_STACK_SIZE],
-};
+}; APP_MAX_NUM];
 
-pub static USER_STACK: UserStack = UserStack {
+pub static USER_STACK: [UserStack; APP_MAX_NUM] = [UserStack {
     data: [0; USER_STACK_SIZE],
-};
+}; APP_MAX_NUM];
 
 impl KernelStack {
     /// Get the stack pointer of the kernel stack
@@ -30,12 +32,12 @@ impl KernelStack {
     }
 
     /// Push the context to the kernel stack
-    pub fn push_context(&self, ctx: TrapContext) -> &'static mut TrapContext {
+    pub fn push_context(&self, ctx: TrapContext) -> usize {
         let ctx_ptr = (self.get_sp() - core::mem::size_of::<TrapContext>()) as *mut TrapContext;
         unsafe {
             *ctx_ptr = ctx;
         }
-        unsafe { ctx_ptr.as_mut().unwrap() }
+        ctx_ptr as usize
     }
 }
 

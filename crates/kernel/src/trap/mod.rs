@@ -4,15 +4,19 @@
 // LICENSE file in the root directory of this source tree.
 
 mod context;
+mod timer;
 
 pub use context::TrapContext;
-use riscv::register::scause::{Exception, Trap};
+use riscv::register::scause::{Exception, Interrupt, Trap};
 use riscv::register::utvec::TrapMode;
-use riscv::register::{scause, stval, stvec};
+use riscv::register::{scause, sie, stval, stvec};
 
 use crate::syscall::syscall;
-use crate::{batch::run_next_app, println};
+use crate::task::suspend_to_next;
+use crate::{task::exit_to_next, println};
 use core::arch::global_asm;
+
+use self::timer::set_next_interrupt;
 
 global_asm!(include_str!("trap.S"));
 
@@ -28,6 +32,12 @@ pub fn init() {
     }
 }
 
+pub fn enable_timer_interrupt() {
+    unsafe {
+        sie::set_stimer();
+    }
+}
+
 /// Trap handler
 ///
 /// This function is the entry of handler of traps from user mode to supervisor mode.
@@ -36,6 +46,10 @@ pub fn trap_handler(ctx: &mut TrapContext) -> &mut TrapContext {
     let scause = scause::read();
     let stval = stval::read();
     match scause.cause() {
+        Trap::Interrupt(Interrupt::SupervisorTimer) => {
+            set_next_interrupt();
+            suspend_to_next();
+        }
         Trap::Exception(Exception::UserEnvCall) => {
             ctx.pc += 4;
             ctx.regs[10] =
@@ -43,11 +57,11 @@ pub fn trap_handler(ctx: &mut TrapContext) -> &mut TrapContext {
         }
         Trap::Exception(Exception::StoreFault) | Trap::Exception(Exception::StorePageFault) => {
             println!("[kernel] PageFault in application, kernel killed it.");
-            run_next_app();
+            exit_to_next();
         }
         Trap::Exception(Exception::IllegalInstruction) => {
             println!("[kernel] IllegalInstruction in application, kernel killed it.");
-            run_next_app();
+            exit_to_next();
         }
         _ => {
             panic!(
