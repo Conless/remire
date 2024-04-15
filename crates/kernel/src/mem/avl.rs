@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use core::cmp::max;
+use core::cmp::{max, Ordering};
 
 #[derive(Clone, Copy)]
 pub struct AVLTree(usize);
@@ -135,39 +135,37 @@ impl AVLTree {
     }
 
     /// Insert a node in the current subtree
-    fn insert_in_node(
-        mut node: *mut AVLTreeNode,
-        tmp: *mut AVLTreeNode,
-    ) -> *mut AVLTreeNode {
+    fn insert_in_node(mut node: *mut AVLTreeNode, tmp: *mut AVLTreeNode) -> *mut AVLTreeNode {
         if node.is_null() {
             return tmp;
         }
-        if unsafe { (*tmp).data } < unsafe { (*node).data } {
-            // Insert in left subtree
-            Self::insert_in_node(unsafe { (*node).left }, tmp);
-            if Self::get_height(unsafe { (*node).left })
-                - Self::get_height(unsafe { (*node).right })
-                == 2
-            {
-                if unsafe { (*tmp).data } < unsafe { &*(*node).left }.data {
-                    node = Self::ll_rotate(node)
-                } else {
-                    node = Self::lr_rotate(node)
+        match unsafe { (*tmp).data.cmp(&(*node).data) } {
+            Ordering::Less => unsafe {
+                // Insert in left subtree
+                (*node).left = Self::insert_in_node((*node).left, tmp);
+                if Self::get_height((*node).left) - Self::get_height((*node).right) == 2 {
+                    if (*tmp).data < (*(*node).left).data {
+                        node = Self::ll_rotate(node)
+                    } else {
+                        node = Self::lr_rotate(node)
+                    }
+                }
+            },
+            Ordering::Greater => unsafe {
+                // Insert in right subtree
+                (*node).right = Self::insert_in_node((*node).right, tmp);
+                if Self::get_height((*node).right)
+                    - Self::get_height((*node).left)
+                    == 2
+                {
+                    if (*tmp).data > (*(*node).right).data {
+                        node = Self::rr_rotate(node);
+                    } else {
+                        node = Self::rl_rotate(node);
+                    }
                 }
             }
-        } else if unsafe { (*tmp).data } > unsafe { (*node).data } {
-            // Insert in right subtree
-            Self::insert_in_node(unsafe { (*node).right }, tmp);
-            if Self::get_height(unsafe { (*node).right })
-                - Self::get_height(unsafe { (*node).left })
-                == 2
-            {
-                if unsafe { (*tmp).data } > unsafe { &*(*node).right }.data {
-                    node = Self::rr_rotate(node);
-                } else {
-                    node = Self::rl_rotate(node);
-                }
-            }
+            Ordering::Equal => {}
         }
         unsafe {
             (*node).height = max(
