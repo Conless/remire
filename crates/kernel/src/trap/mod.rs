@@ -7,6 +7,8 @@ mod context;
 mod timer;
 
 pub use context::TrapContext;
+pub use timer::get_time;
+
 use riscv::register::scause::{Exception, Interrupt, Trap};
 use riscv::register::utvec::TrapMode;
 use riscv::register::{scause, sie, stval, stvec};

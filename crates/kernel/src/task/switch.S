@@ -34,5 +34,7 @@ __switch:
     ld s9, 88(a1)
     ld s10, 96(a1)
     ld s11, 104(a1)
+
+    mv a0, sp
     ret
 

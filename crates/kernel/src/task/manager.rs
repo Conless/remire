@@ -6,7 +6,7 @@
 use alloc::vec::Vec;
 use lazy_static::lazy_static;
 
-use crate::{sync::UPSafeCell, task::{context::init_app, loader::get_num_app, TaskContext, TaskStatus}};
+use crate::{println, sbi::shutdown, sync::UPSafeCell, task::{context::init_app, loader::get_num_app, TaskContext, TaskStatus}};
 
 use super::{switch::__switch, TaskControlBlock};
 
@@ -81,7 +81,8 @@ impl TaskManager {
                 );
             }
         } else {
-            panic!("All applications completed!");
+            println!("All applications completed!");
+            shutdown(false)
         }
     }
     
