@@ -7,7 +7,7 @@
 #![feature(linkage)]
 #![feature(panic_info_message)]
 
-use syscall::{sys_exit, sys_write};
+use syscall::*;
 
 #[macro_use]
 pub mod console; // For export the macros
@@ -52,3 +52,7 @@ pub fn exit(exit_code: i32) -> isize {
 }
 
 pub fn yield_() -> isize { sys_yield() }
+
+pub fn get_time() -> isize {
+    sys_get_time()
+}
