@@ -3,15 +3,35 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use alloc::{collections::BTreeMap, vec::Vec};
+use alloc::{collections::BTreeMap, sync::Arc, vec::Vec};
 
-use crate::config::PAGE_SIZE;
+use crate::{config::{MEMORY_END, MMIO, PAGE_SIZE, TRAMPOLINE, TRAP_CONTEXT}, println, sync::UPSafeCell};
 
 use super::{
-    address::{PhysPageNum, VPNRange, VirtAddr, VirtPageNum},
+    address::{PhysAddr, PhysPageNum, VPNRange, VirtAddr, VirtPageNum},
     frame::{frame_alloc, FrameGuard}, page_table::{PTEFlags, PageTable}, range::StepByOne,
 };
 use bitflags::bitflags;
+use lazy_static::lazy_static;
+
+extern "C" {
+    fn stext();
+    fn etext();
+    fn srodata();
+    fn erodata();
+    fn sdata();
+    fn edata();
+    fn sbss_with_stack();
+    fn ebss();
+    fn ekernel();
+    fn strampoline();
+}
+
+lazy_static! {
+    /// a memory set instance through lazy_static! managing kernel space
+    pub static ref KERNEL_SPACE: Arc<UPSafeCell<MemorySet>> =
+        Arc::new(unsafe { UPSafeCell::new(MemorySet::new_kernel()) });
+}
 
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub enum MapType {
@@ -28,9 +48,12 @@ bitflags! {
   }
 }
 
+/// A mapped area of virtual memory
+/// 
+/// `MapArea` represents an area of virtual memory with continuous address in the address space.
 pub struct MapArea {
-    vpn_range: VPNRange,
-    data_frames: BTreeMap<VirtPageNum, FrameGuard>,
+    vpn_range: VPNRange, // The range of the virtual page number, can be traversed by Iter.
+    data_frames: BTreeMap<VirtPageNum, FrameGuard>, // The data frames of the area
     map_type: MapType,
     map_perm: MapPermission,
 }
@@ -114,6 +137,9 @@ impl MapArea {
     }
 }
 
+/// The memory set of a process
+/// 
+/// This struct contains the page table and mapped areas of a process
 pub struct MemorySet {
     page_table: PageTable,
     areas: Vec<MapArea>,
@@ -147,5 +173,170 @@ impl MemorySet {
             MapType::Framed,
             permission,
         ), None);
+    }
+    
+    /// Create a kernel address space.
+    pub fn new_kernel() -> Self {
+        let mut memory_set = Self::empty();
+        
+        // map trampoline
+        memory_set.page_table.map(VirtAddr::from(TRAMPOLINE).into(), PhysAddr::from(strampoline as usize).into(), PTEFlags::R | PTEFlags::X);
+        
+        // map kernel sections
+        println!("[kernel] mapping .text [{:#x}, {:#x})", stext as usize, etext as usize);
+        memory_set.push(
+            MapArea::new(
+                (stext as usize).into(),
+                (etext as usize).into(),
+                MapType::Identical,
+                MapPermission::R | MapPermission::X,
+            ),
+            None,
+        );
+        println!("[kernel] mapping .rodata [{:#x}, {:#x})", srodata as usize, erodata as usize);
+        memory_set.push(
+            MapArea::new(
+                (srodata as usize).into(),
+                (erodata as usize).into(),
+                MapType::Identical,
+                MapPermission::R,
+            ),
+            None,
+        );
+        println!("[kernel] mapping .data [{:#x}, {:#x})", sdata as usize, edata as usize);
+        memory_set.push(
+            MapArea::new(
+                (sdata as usize).into(),
+                (edata as usize).into(),
+                MapType::Identical,
+                MapPermission::R | MapPermission::W,
+            ),
+            None,
+        );
+        println!(
+            "[kernel] mapping .bss [{:#x}, {:#x})",
+            sbss_with_stack as usize, ebss as usize
+        );
+        memory_set.push(
+            MapArea::new(
+                (sbss_with_stack as usize).into(),
+                (ebss as usize).into(),
+                MapType::Identical,
+                MapPermission::R | MapPermission::W,
+            ),
+            None,
+        );
+
+        println!(
+            "[kernel] mapping physical memory [{:#x}, {:#x})",
+            ekernel as usize, MEMORY_END
+        );
+        memory_set.push(
+            MapArea::new(
+                (ekernel as usize).into(),
+                MEMORY_END.into(),
+                MapType::Identical,
+                MapPermission::R | MapPermission::W,
+            ),
+            None,
+        );
+        
+        for pair in MMIO {
+            println!(
+                "[kernel] mapping MMIO [{:#x}, {:#x})",
+                pair.0, pair.0 + pair.1
+            );
+            memory_set.push(
+                MapArea::new(
+                    pair.0.into(),
+                    (pair.0 + pair.1).into(),
+                    MapType::Identical,
+                    MapPermission::R | MapPermission::W,
+                ),
+                None,
+            );
+        }
+        memory_set
+    }
+    
+    pub fn new_app(app_data: &[u8]) -> (Self, usize, usize) {
+        let mut memory_set = Self::empty();
+
+        // map trampoline
+        memory_set.page_table.map(VirtAddr::from(TRAMPOLINE).into(), PhysAddr::from(strampoline as usize).into(), PTEFlags::R | PTEFlags::X);
+
+        // map app sections
+        let elf_data = xmas_elf::ElfFile::new(app_data).unwrap();
+        let elf_header = elf_data.header;
+        let magic = elf_header.pt1.magic;
+        assert_eq!(magic, [0x7f, 0x45, 0x4c, 0x46], "invalid elf!");
+        
+        let header_count = elf_header.pt2.ph_count();
+        let mut max_end_va = 0;
+        for i in 0..header_count {
+            let header = elf_data.program_header(i).unwrap();
+            if header.get_type().unwrap() == xmas_elf::program::Type::Load {
+                let start_va = VirtAddr::from(header.virtual_addr() as usize);
+                let end_va = VirtAddr::from((header.virtual_addr() + header.mem_size()) as usize);
+                
+                // init permission
+                let mut permission = MapPermission::empty();
+                let flags = header.flags();
+                if flags.is_read() {
+                    permission |= MapPermission::R;
+                }
+                if flags.is_write() {
+                    permission |= MapPermission::W;
+                }
+                if flags.is_execute() {
+                    permission |= MapPermission::X;
+                }
+
+                // init mapped area
+                let map_area = MapArea::new(start_va, end_va, MapType::Framed, permission);
+                memory_set.push(map_area, Some(&app_data[header.offset() as usize..(header.offset() + header.file_size()) as usize]));
+            }
+        }
+        
+        let end_va: VirtAddr = memory_set.areas.last().unwrap().vpn_range.get_end().into();
+        let end_va_usize: usize = end_va.into();
+        let user_stack_bottom: usize = end_va_usize + PAGE_SIZE;
+        let user_stack_top = user_stack_bottom + PAGE_SIZE;
+        println!(
+            "[kernel] mapping user stack [{:#x}, {:#x})",
+            user_stack_bottom, user_stack_top
+        );
+        memory_set.push(
+            MapArea::new(
+                user_stack_bottom.into(),
+                user_stack_top.into(),
+                MapType::Framed,
+                MapPermission::R | MapPermission::W | MapPermission::U,
+            ),
+            None,
+        );
+        
+        // TODO: reserve for sbrk (reference: rcore)
+        
+        // mapping the trap context
+        println!(
+            "[kernel] mapping trap context [{:#x}, {:#x})",
+            TRAP_CONTEXT, TRAMPOLINE
+        );
+        memory_set.push(
+            MapArea::new(
+                TRAP_CONTEXT.into(),
+                TRAMPOLINE.into(),
+                MapType::Framed,
+                MapPermission::R | MapPermission::W,
+            ),
+            None,
+        );
+        
+        (
+            memory_set,
+            user_stack_top,
+            elf_data.header.pt2.entry_point() as usize,
+        )
     }
 }
