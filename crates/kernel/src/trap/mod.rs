@@ -13,10 +13,11 @@ use riscv::register::scause::{Exception, Interrupt, Trap};
 use riscv::register::utvec::TrapMode;
 use riscv::register::{scause, sie, stval, stvec};
 
+use crate::config::{TRAMPOLINE, TRAP_CONTEXT};
 use crate::syscall::syscall;
-use crate::task::suspend_to_next;
+use crate::task::{current_user_token, suspend_to_next};
 use crate::{task::exit_to_next, println};
-use core::arch::global_asm;
+use core::arch::{asm, global_asm};
 
 use self::timer::set_next_interrupt;
 
@@ -32,6 +33,23 @@ pub fn init() {
     unsafe {
         stvec::write(__alltraps as usize, TrapMode::Direct);
     }
+}
+
+fn set_kernel_trap_entry() {
+    unsafe {
+        stvec::write(trap_from_kernel as usize, TrapMode::Direct);
+    }
+}
+
+fn set_user_trap_entry() {
+    unsafe {
+        stvec::write(TRAMPOLINE as usize, TrapMode::Direct);
+    }
+}
+
+#[no_mangle]
+pub fn trap_from_kernel() -> ! {
+    panic!("a trap from kernel!");
 }
 
 pub fn enable_timer_interrupt() {
@@ -74,4 +92,26 @@ pub fn trap_handler(ctx: &mut TrapContext) -> &mut TrapContext {
         }
     }
     ctx
+}
+
+#[no_mangle]
+pub fn trap_return() -> ! {
+    set_user_trap_entry();
+    let trap_ctx_ptr = TRAP_CONTEXT;
+    let user_satp = current_user_token();
+    extern "C" {
+        fn __alltraps();
+        fn __restore();
+    }
+    let restore_va = __restore as usize - __alltraps as usize + TRAMPOLINE;
+    unsafe {
+        asm!(
+            "fence.i",
+            "jr {restore_va}",
+            restore_va = in(reg) restore_va,
+            in("a0") trap_ctx_ptr,
+            in("a1") user_satp,
+            options(noreturn)
+        );
+    }
 }
