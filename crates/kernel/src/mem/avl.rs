@@ -312,7 +312,12 @@ impl AVLTree {
 
     pub fn insert(&mut self, data: usize) {
         let node = data as *mut AVLTreeNode;
-        (unsafe { &mut *node }).data = data;
+        unsafe {
+            (*node).data = data;
+            (*node).height = 1;
+            (*node).left = core::ptr::null_mut();
+            (*node).right = core::ptr::null_mut();
+        }
         self.0 = AVLTree::insert_in_node(self.0 as *mut AVLTreeNode, node) as usize;
     }
 

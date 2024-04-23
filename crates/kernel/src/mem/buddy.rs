@@ -28,6 +28,7 @@ impl BuddyAllocator {
             if let Some(block) = self.free_list[i].pop_min() {
                 self.free_list[i - 1].insert(block);
                 self.free_list[i - 1].insert(block + (1 << (i - 1)));
+                println!("[allocator] split: {:#x} -> {:#x}", i, i-1);
             } else {
                 panic!("[allocator] internal error: buddy allocator is corrupted");
             }
@@ -62,7 +63,7 @@ impl BuddyAllocator {
     }
 
     pub unsafe fn add_segment(&mut self, mut start: usize, mut end: usize) {
-        let align = size_of::<usize>();
+        let align = 32;
         start = (start + align - 1) & !(align - 1);
         end &= !(align - 1);
         self.total += end - start;
@@ -77,7 +78,7 @@ impl BuddyAllocator {
     pub fn alloc(&mut self, layout: Layout) -> *mut u8 {
         let size = max(
             layout.size().next_power_of_two(),
-            max(layout.align(), size_of::<usize>()),
+            max(layout.align(), 32),
         );
         let level = size.trailing_zeros() as usize;
         for i in level..self.free_list.len() {
@@ -99,7 +100,7 @@ impl BuddyAllocator {
     pub unsafe fn dealloc(&mut self, ptr: *mut u8, layout: Layout) {
         let size = max(
             layout.size().next_power_of_two(),
-            max(layout.align(), size_of::<usize>()),
+            max(layout.align(), 32),
         );
         let level = size.trailing_zeros() as usize;
         self.free_list[level].insert(ptr as usize);

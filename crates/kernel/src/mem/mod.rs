@@ -43,4 +43,8 @@ unsafe impl GlobalAlloc for LockedAllocator {
 }
 
 #[global_allocator]
-pub static HEAP_ALLOCATOR: LockedAllocator = LockedAllocator::empty();
+static HEAP_ALLOCATOR: LockedAllocator = LockedAllocator::empty();
+
+pub fn init_heap_allocator() {
+    HEAP_ALLOCATOR.init();
+}
