@@ -39,7 +39,7 @@ pub fn frame_alloc() -> Option<FrameGuard> {
     FRAME_ALLOCATOR
         .borrow_mut()
         .alloc()
-        .map(|ppn| FrameGuard::new(ppn))
+        .map(FrameGuard::new)
 }
 
 /// Deallocate a frame

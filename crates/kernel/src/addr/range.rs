@@ -64,7 +64,7 @@ where
 {
     type Item = T;
     fn next(&mut self) -> Option<Self::Item> {
-        if self.current == self.end {
+        if self.current >= self.end {
             None
         } else {
             let t = self.current;

@@ -38,10 +38,3 @@ impl TaskContext {
         }
     }
 }
-
-pub fn init_app(app_id: usize) -> usize {
-    KERNEL_STACK[app_id].push_context(TrapContext::app_init_context(
-        get_app_addr(app_id),
-        USER_STACK[app_id].get_sp(),
-    ))
-}

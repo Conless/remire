@@ -157,6 +157,10 @@ impl PageTable {
     pub fn translate(&self, vpn: VirtPageNum) -> Option<PageTableEntry> {
         self.find_entry(vpn).map(|entry| *entry)
     }
+    
+    pub fn token(&self) -> usize {
+        8usize << 60 | self.root_ppn.0
+    }
 }
 
 impl From<usize> for PageTable {
@@ -171,9 +175,9 @@ impl From<usize> for PageTable {
     }
 }
 
-impl Into<usize> for PageTable {
-    fn into(self) -> usize {
-        self.root_ppn.0
+impl From<PageTable> for usize {
+    fn from(val: PageTable) -> Self {
+        val.root_ppn.0
     }
 }
 

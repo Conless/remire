@@ -6,7 +6,7 @@
 use alloc::vec::Vec;
 use lazy_static::lazy_static;
 
-use crate::{println, sbi::shutdown, sync::UPSafeCell, task::{context::init_app, loader::get_num_app, TaskContext, TaskStatus}};
+use crate::{println, sbi::shutdown, sync::UPSafeCell, task::{loader::{get_app_data, get_num_app}, TaskContext, TaskStatus}};
 
 use super::{switch::__switch, TaskControlBlock};
 
@@ -31,10 +31,10 @@ lazy_static! {
         let mut tasks = Vec::new();
         for i in 0..num_app {
             // Init all the applications
-            tasks.push(TaskControlBlock {
-                status: TaskStatus::Ready,
-                ctx: TaskContext::restore(init_app(i)),
-            });
+            tasks.push(TaskControlBlock::new(
+                get_app_data(i),
+                i
+            ));
         }
         TaskManager {
             num_app,
@@ -117,5 +117,10 @@ impl TaskManager {
             );
         }
         unreachable!()
+    }
+    
+    pub fn get_current_token(&self) -> usize {
+        let inner = self.inner.borrow_mut();
+        inner.tasks[inner.current_task].get_user_token()
     }
 }

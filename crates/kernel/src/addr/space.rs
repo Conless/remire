@@ -3,7 +3,10 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
+use core::arch::asm;
+
 use alloc::{collections::BTreeMap, sync::Arc, vec::Vec};
+use riscv::register::satp;
 
 use crate::{config::{MEMORY_END, MMIO, PAGE_SIZE, TRAMPOLINE, TRAP_CONTEXT}, println, sync::UPSafeCell};
 
@@ -31,6 +34,10 @@ lazy_static! {
     /// a memory set instance through lazy_static! managing kernel space
     pub static ref KERNEL_SPACE: Arc<UPSafeCell<MemorySet>> =
         Arc::new(unsafe { UPSafeCell::new(MemorySet::new_kernel()) });
+}
+
+pub fn activate_kernel_space() {
+    KERNEL_SPACE.borrow_mut().activate();
 }
 
 #[derive(Copy, Clone, PartialEq, Debug)]
@@ -151,6 +158,9 @@ impl MemorySet {
             page_table: PageTable::new(),
             areas: Vec::new(),
         }
+    }
+    pub fn token(&self) -> usize {
+        self.page_table.token()
     }
 
     /// Push a mapped area into the memory set.
@@ -338,5 +348,17 @@ impl MemorySet {
             user_stack_top,
             elf_data.header.pt2.entry_point() as usize,
         )
+    }
+    
+    pub fn translate(&self, vpn: VirtPageNum) -> Option<PhysPageNum> {
+        self.page_table.translate(vpn).map(|pte| pte.ppn())
+    }
+    
+    pub fn activate(&self) {
+        let satp = self.page_table.token();
+        unsafe {
+            satp::write(satp);
+            asm!("sfence.vma");
+        }
     }
 }
