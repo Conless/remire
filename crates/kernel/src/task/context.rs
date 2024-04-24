@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use crate::{stack::{KERNEL_STACK, USER_STACK}, trap::TrapContext};
+use crate::{stack::{KERNEL_STACK, USER_STACK}, trap::{trap_return, TrapContext}};
 
 use super::loader::get_app_addr;
 
@@ -28,11 +28,8 @@ impl TaskContext {
     }
 
     pub fn restore(sp: usize) -> Self {
-        extern "C" {
-            fn __restore();
-        }
         Self {
-            ra: __restore as usize,
+            ra: trap_return as usize,
             sp,
             s: [0; 12],
         }

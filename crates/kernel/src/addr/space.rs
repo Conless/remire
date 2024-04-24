@@ -290,7 +290,7 @@ impl MemorySet {
                 let end_va = VirtAddr::from((header.virtual_addr() + header.mem_size()) as usize);
                 
                 // init permission
-                let mut permission = MapPermission::empty();
+                let mut permission = MapPermission::U;
                 let flags = header.flags();
                 if flags.is_read() {
                     permission |= MapPermission::R;
@@ -305,6 +305,10 @@ impl MemorySet {
                 // init mapped area
                 let map_area = MapArea::new(start_va, end_va, MapType::Framed, permission);
                 memory_set.push(map_area, Some(&app_data[header.offset() as usize..(header.offset() + header.file_size()) as usize]));
+                println!(
+                    "[kernel] mapping app section [{:#x}, {:#x})",
+                    usize::from(start_va), usize::from(end_va)
+                );
             }
         }
         

@@ -27,12 +27,7 @@ global_asm!(include_str!("trap.S"));
 ///
 /// Set the trap entry to `__alltraps` in `trap.S`
 pub fn init() {
-    extern "C" {
-        fn __alltraps();
-    }
-    unsafe {
-        stvec::write(__alltraps as usize, TrapMode::Direct);
-    }
+    set_kernel_trap_entry()
 }
 
 fn set_kernel_trap_entry() {
@@ -43,7 +38,7 @@ fn set_kernel_trap_entry() {
 
 fn set_user_trap_entry() {
     unsafe {
-        stvec::write(TRAMPOLINE as usize, TrapMode::Direct);
+        stvec::write(TRAMPOLINE, TrapMode::Direct);
     }
 }
 
