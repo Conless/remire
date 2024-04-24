@@ -28,7 +28,7 @@ impl BuddyAllocator {
             if let Some(block) = self.free_list[i].pop_min() {
                 self.free_list[i - 1].insert(block);
                 self.free_list[i - 1].insert(block + (1 << (i - 1)));
-                println!("[allocator] split: {:#x} -> {:#x}", i, i-1);
+                // println!("[allocator] split: {:#x} -> {:#x}", i, i-1);
             } else {
                 panic!("[allocator] internal error: buddy allocator is corrupted");
             }
@@ -88,7 +88,7 @@ impl BuddyAllocator {
                 let result = self.free_list[level].pop_min().expect("[allocator] Expect non-empty free list.");
 
                 // Maintain statistics
-                println!("[allocator] allocated: {:#x}, user: {:#x}", self.allocated, self.user);
+                // println!("[allocator] allocated: {:#x}, user: {:#x}", self.allocated, self.user);
                 self.user += size;
                 self.allocated += size;
                 return result as *mut u8;

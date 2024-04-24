@@ -12,10 +12,10 @@ use core::arch::{asm, global_asm};
 
 extern crate alloc;
 
+use addr::{activate_kernel_space, init_frame_allocator};
 use alloc::boxed::Box;
 use drivers::init_device;
-
-use crate::mem::HEAP_ALLOCATOR;
+use mem::init_heap_allocator;
 
 mod lang;
 mod sbi;
@@ -34,12 +34,13 @@ global_asm!(include_str!("link_app.S"));
 
 #[no_mangle]
 extern "C" fn rust_init() -> ! {
-    // init_device();
+    init_heap_allocator();
+    init_frame_allocator();
+    activate_kernel_space();
     rust_main()
 }
 
 fn rust_main() -> ! {
-    HEAP_ALLOCATOR.init();
     println!("[kernel] Hello, World!");
     trap::init();
     task::load_apps();
