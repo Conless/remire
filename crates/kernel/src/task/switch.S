@@ -16,7 +16,7 @@
 # fn __switch(
 #     current_task_cx_ptr: *mut TaskContext,
 #     next_task_cx_ptr: *const TaskContext
-# ) -> usize
+# ) -> !
     .section .text
     .globl __switch
 __switch:
@@ -39,7 +39,5 @@ __switch:
         LOAD_SN %n
         .set n, n+1
     .endr
-
-    mv a0, sp
     ret
 

@@ -9,7 +9,7 @@
 # Global trap handler
 #
 # fn __alltraps(cx: &mut TrapContext) -> !
-    .section .text
+    .section .text.trampoline
     .globl __alltraps
     .globl __restore
     .align 2
