@@ -110,3 +110,7 @@ pub fn current_user_token() -> usize {
     TASK_MANAGER.get_current_token()
 }
 
+pub fn current_trap_ctx() -> &'static mut TrapContext {
+    TASK_MANAGER.get_current_trap_ctx()
+}
+

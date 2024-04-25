@@ -8,7 +8,7 @@
 
 # Global trap handler
 #
-# fn __alltraps(cx: &mut TrapContext) -> !
+# fn __alltraps(ctx: &mut TrapContext) -> !
     .section .text.trampoline
     .globl __alltraps
     .globl __restore
@@ -36,8 +36,8 @@ __alltraps:
     sd t2, 2*8(sp)  # TrapContext::sp
     
     ld t0, 34*8(sp) # TrapContext::satp
-    ld sp, 35*8(sp) # TrapContext::sp
     ld t1, 36*8(sp) # TrapContext::trap_handler
+    ld sp, 35*8(sp) # TrapContext::sp
 
     # switch to kernel space
     csrw satp, t0

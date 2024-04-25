@@ -15,7 +15,7 @@ use riscv::register::{scause, sie, stval, stvec};
 
 use crate::config::{TRAMPOLINE, TRAP_CONTEXT};
 use crate::syscall::syscall;
-use crate::task::{current_user_token, suspend_to_next};
+use crate::task::{current_trap_ctx, current_user_token, suspend_to_next};
 use crate::{task::exit_to_next, println};
 use core::arch::{asm, global_asm};
 
@@ -57,7 +57,9 @@ pub fn enable_timer_interrupt() {
 ///
 /// This function is the entry of handler of traps from user mode to supervisor mode.
 #[no_mangle]
-pub fn trap_handler(ctx: &mut TrapContext) -> &mut TrapContext {
+pub fn trap_handler() -> ! {
+    set_kernel_trap_entry();
+    let ctx = current_trap_ctx();
     let scause = scause::read();
     let stval = stval::read();
     match scause.cause() {
@@ -86,7 +88,7 @@ pub fn trap_handler(ctx: &mut TrapContext) -> &mut TrapContext {
             );
         }
     }
-    ctx
+    trap_return()
 }
 
 #[no_mangle]

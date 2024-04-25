@@ -6,7 +6,7 @@
 use alloc::vec::Vec;
 use lazy_static::lazy_static;
 
-use crate::{println, sbi::shutdown, sync::UPSafeCell, task::{loader::{get_app_data, get_num_app}, TaskContext, TaskStatus}};
+use crate::{println, sbi::shutdown, sync::UPSafeCell, task::{loader::{get_app_data, get_num_app}, TaskContext, TaskStatus}, trap::TrapContext};
 
 use super::{switch::__switch, TaskControlBlock};
 
@@ -68,16 +68,16 @@ impl TaskManager {
             let current = inner.current_task;
             inner.tasks[next].status = TaskStatus::Running;
             inner.current_task = next;
-            let current_task_cx_ptr = &mut inner.tasks[current].ctx as *mut TaskContext;
-            let next_task_cx_ptr = &inner.tasks[next].ctx as *const TaskContext;
+            let current_task_ctx_ptr = &mut inner.tasks[current].ctx as *mut TaskContext;
+            let next_task_ctx_ptr = &inner.tasks[next].ctx as *const TaskContext;
             
             // Drop local variables that must be dropped manually
             drop(inner);
 
             unsafe {
                 __switch( // Switch context to the next task
-                    current_task_cx_ptr,
-                    next_task_cx_ptr,
+                    current_task_ctx_ptr,
+                    next_task_ctx_ptr,
                 );
             }
         } else {
@@ -122,5 +122,10 @@ impl TaskManager {
     pub fn get_current_token(&self) -> usize {
         let inner = self.inner.borrow_mut();
         inner.tasks[inner.current_task].get_user_token()
+    }
+
+    pub fn get_current_trap_ctx(&self) -> &'static mut TrapContext {
+        let inner = self.inner.borrow_mut();
+        inner.tasks[inner.current_task].get_trap_ctx()
     }
 }

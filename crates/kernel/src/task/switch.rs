@@ -9,5 +9,5 @@ use super::TaskContext;
 
 // Wrapper for the assembly function `__switch`
 extern "C" {
-    pub fn __switch(current_task_cx_ptr: *mut TaskContext, next_task_cx_ptr: *const TaskContext);
+    pub fn __switch(current_task_ctx_ptr: *mut TaskContext, next_task_ctx_ptr: *const TaskContext);
 }

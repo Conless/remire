@@ -1,6 +1,6 @@
 # __switch(
-#     current_task_cx_ptr: *mut TaskContext,
-#     next_task_cx_ptr: *const TaskContext
+#     current_task_ctx_ptr: *mut TaskContext,
+#     next_task_ctx_ptr: *const TaskContext
 # )
 
 .altmacro
@@ -14,8 +14,8 @@
 # Switch to the next task and return the sp of the next task
 #
 # fn __switch(
-#     current_task_cx_ptr: *mut TaskContext,
-#     next_task_cx_ptr: *const TaskContext
+#     current_task_ctx_ptr: *mut TaskContext,
+#     next_task_ctx_ptr: *const TaskContext
 # ) -> !
     .section .text
     .globl __switch
