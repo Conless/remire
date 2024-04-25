@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use crate::print;
+use crate::{addr::translated_byte_buffer, print, task::current_user_token};
 
 const FD_STDOUT: usize = 1;
 const FD_STDERR: usize = 2;
@@ -12,9 +12,10 @@ const FD_STDERR: usize = 2;
 pub fn sys_write(fd: usize, buf: *const u8, len: usize) -> isize {
     match fd {
         FD_STDOUT | FD_STDERR => {
-            let slice = unsafe { core::slice::from_raw_parts(buf, len) };
-            let str = core::str::from_utf8(slice).unwrap();
-            print!("{}", str);
+            let buffers = translated_byte_buffer(current_user_token(), buf, len);
+            for buffer in buffers {
+                print!("{}", core::str::from_utf8(buffer).unwrap());
+            }
             len as isize
         }
         _ => {
