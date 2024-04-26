@@ -16,7 +16,7 @@ use riscv::register::{scause, sie, stval, stvec};
 use crate::config::{TRAMPOLINE, TRAP_CONTEXT};
 use crate::syscall::syscall;
 use crate::task::{current_trap_ctx, current_user_token, suspend_to_next};
-use crate::{task::exit_to_next, println};
+use crate::{println, task::exit_to_next};
 use core::arch::{asm, global_asm};
 
 use self::timer::set_next_interrupt;
@@ -51,6 +51,7 @@ pub fn enable_timer_interrupt() {
     unsafe {
         sie::set_stimer();
     }
+    set_next_interrupt();
 }
 
 /// Trap handler
@@ -72,7 +73,10 @@ pub fn trap_handler() -> ! {
             ctx.regs[10] =
                 syscall(ctx.regs[17], [ctx.regs[10], ctx.regs[11], ctx.regs[12]]) as usize;
         }
-        Trap::Exception(Exception::StoreFault) | Trap::Exception(Exception::StorePageFault) => {
+        Trap::Exception(Exception::StoreFault)
+        | Trap::Exception(Exception::StorePageFault)
+        | Trap::Exception(Exception::LoadFault)
+        | Trap::Exception(Exception::LoadPageFault) => {
             println!("[kernel] PageFault in application, kernel killed it.");
             exit_to_next();
         }
