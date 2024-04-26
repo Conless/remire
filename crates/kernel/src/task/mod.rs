@@ -30,6 +30,8 @@ pub struct TaskControlBlock {
     pub memory_set: MemorySet,
     pub ctx_ppn: PhysPageNum,
     pub size: usize,
+    pub heap_bottom: usize,
+    pub program_brk: usize,
 }
 
 impl TaskControlBlock {
@@ -65,6 +67,8 @@ impl TaskControlBlock {
             memory_set,
             ctx_ppn,
             size: user_sp,
+            heap_bottom: user_sp,
+            program_brk: user_sp,
         };
         // prepare TrapContext in user space
         let trap_ctx = task_control_block.get_trap_ctx();
@@ -78,6 +82,26 @@ impl TaskControlBlock {
         task_control_block
     }
 
+    pub fn change_program_brk(&mut self, size: i32) -> Option<usize> {
+        let old_break = self.program_brk;
+        let new_brk = self.program_brk as isize + size as isize;
+        if new_brk < self.heap_bottom as isize {
+            return None;
+        }
+        let result = if size < 0 {
+            self.memory_set
+                .shrink_to(VirtAddr(self.heap_bottom), VirtAddr(new_brk as usize))
+        } else {
+            self.memory_set
+                .append_to(VirtAddr(self.heap_bottom), VirtAddr(new_brk as usize))
+        };
+        if result {
+            self.program_brk = new_brk as usize;
+            Some(old_break)
+        } else {
+            None
+        }
+    }
 }
 
 pub fn run_first_task() -> ! {
@@ -114,3 +138,6 @@ pub fn current_trap_ctx() -> &'static mut TrapContext {
     TASK_MANAGER.get_current_trap_ctx()
 }
 
+pub fn change_program_brk(size: i32) -> Option<usize> {
+    TASK_MANAGER.change_current_program_brk(size)
+}

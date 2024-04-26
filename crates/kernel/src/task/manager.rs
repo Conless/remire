@@ -128,4 +128,10 @@ impl TaskManager {
         let inner = self.inner.borrow_mut();
         inner.tasks[inner.current_task].get_trap_ctx()
     }
+    
+    pub fn change_current_program_brk(&self, size: i32) -> Option<usize> {
+        let mut inner = self.inner.borrow_mut();
+        let cur = inner.current_task;
+        inner.tasks[cur].change_program_brk(size)
+    }
 }
