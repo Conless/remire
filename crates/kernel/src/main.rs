@@ -15,8 +15,9 @@ extern crate alloc;
 use addr::{activate_kernel_space, init_frame_allocator};
 use alloc::boxed::Box;
 use drivers::init_device;
-use mem::init_heap_allocator;
+use allocator::init_heap_allocator;
 
+mod allocator;
 mod lang;
 mod sbi;
 mod config;
@@ -26,7 +27,6 @@ mod stack;
 mod syscall;
 mod sync;
 mod task;
-mod mem;
 mod addr;
 
 global_asm!(include_str!("entry.S"));

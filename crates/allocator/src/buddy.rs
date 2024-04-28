@@ -5,8 +5,6 @@
 
 use core::{alloc::Layout, clone, cmp::{max, min}, mem::size_of};
 
-use crate::println;
-
 use super::avl::AVLTree;
 
 const BUDDY_ALLOCATOR_LEVEL: usize = 32;
