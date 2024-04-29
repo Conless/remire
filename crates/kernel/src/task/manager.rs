@@ -52,6 +52,7 @@ impl TaskManager {
         let mut inner = self.inner.borrow_mut();
         let current = inner.current_task;
         inner.tasks[current].status = TaskStatus::Ready;
+        println!("Task {} suspended", current);
     }
 
     /// Exit current task
@@ -59,6 +60,7 @@ impl TaskManager {
         let mut inner = self.inner.borrow_mut();
         let current = inner.current_task;
         inner.tasks[current].status = TaskStatus::Exited;
+        println!("Task {} exited", current);
     }
     
     /// Change the running task to the next task found by `find_next_task`
@@ -70,6 +72,7 @@ impl TaskManager {
             inner.current_task = next;
             let current_task_ctx_ptr = &mut inner.tasks[current].ctx as *mut TaskContext;
             let next_task_ctx_ptr = &inner.tasks[next].ctx as *const TaskContext;
+            println!("Switch to task {}", next);
             
             // Drop local variables that must be dropped manually
             drop(inner);

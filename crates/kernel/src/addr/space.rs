@@ -206,12 +206,23 @@ impl MemorySet {
             None,
         );
     }
+    
+    pub fn remove(&mut self, start_vpn: VirtPageNum) {
+        if let Some((idx, area)) = self
+            .areas
+            .iter_mut()
+            .enumerate()
+            .find(|(_, area)| area.vpn_range.get_start() == start_vpn)
+        {
+            area.unmap(&mut self.page_table);
+            self.areas.remove(idx);
+        }
+    }
 
     /// Create a kernel address space.
     pub fn new_kernel() -> Self {
         let mut memory_set = Self::empty();
 
-        // map trampoline
         memory_set.page_table.map(
             VirtAddr::from(TRAMPOLINE).into(),
             PhysAddr::from(strampoline as usize).into(),
@@ -376,7 +387,20 @@ impl MemorySet {
             None,
         );
 
-        // TODO: reserve for sbrk (reference: rcore)
+        // mapping user heap
+        println!(
+            "[kernel] mapping user heap [{:#x}, {:#x})",
+            user_stack_top, user_stack_top
+        );
+        memory_set.push(
+            MapArea::new(
+                user_stack_top.into(),
+                user_stack_top.into(),
+                MapType::Framed,
+                MapPermission::R | MapPermission::W | MapPermission::U,
+            ),
+            None,
+        );
 
         // mapping the trap context
         println!(
@@ -426,6 +450,11 @@ impl MemorySet {
     }
 
     pub fn append_to(&mut self, start: VirtAddr, new_end: VirtAddr) -> bool {
+        for area in &self.areas {
+            println!("start = {:#x}, end = {:#x}", area.vpn_range.get_start().0, area.vpn_range.get_end().0);
+        }
+        println!("start = {:#x}, end = {:#x}", start.0, new_end.0);
+        // panic!();
         if let Some(area) = self
             .areas
             .iter_mut()
