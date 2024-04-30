@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use crate::{addr::translated_byte_buffer, print, task::current_user_token};
+use crate::{mm::translated_byte_buffer, print, task::current_user_token};
 
 const FD_STDOUT: usize = 1;
 const FD_STDERR: usize = 2;

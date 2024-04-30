@@ -12,7 +12,7 @@ use core::arch::{asm, global_asm};
 
 extern crate alloc;
 
-use addr::{activate_kernel_space, init_frame_allocator};
+use mm::{activate_kernel_space, init_frame_allocator};
 use alloc::boxed::Box;
 use drivers::init_device;
 use allocator::init_heap_allocator;
@@ -27,7 +27,7 @@ mod stack;
 mod syscall;
 mod sync;
 mod task;
-mod addr;
+mod mm;
 
 global_asm!(include_str!("entry.S"));
 global_asm!(include_str!("link_app.S"));

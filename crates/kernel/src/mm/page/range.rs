@@ -24,10 +24,10 @@ where
     pub fn new(start: T, end: T) -> Self {
         Self { l: start, r: end }
     }
-    pub fn get_start(&self) -> T {
+    pub const fn get_start(&self) -> T {
         self.l
     }
-    pub fn get_end(&self) -> T {
+    pub const fn get_end(&self) -> T {
         self.r
     }
 }

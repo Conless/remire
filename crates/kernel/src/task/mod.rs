@@ -4,14 +4,21 @@
 // LICENSE file in the root directory of this source tree.
 
 mod context;
-mod switch;
 mod loader;
 mod manager;
+mod switch;
 
 pub use context::TaskContext;
 pub use loader::load_apps;
 
-use crate::{addr::{MapPermission, MemorySet, PhysAddr, PhysPageNum, VirtAddr, KERNEL_SPACE}, config::{KERNEL_HEAP_SIZE, KERNEL_STACK_SIZE, PAGE_SIZE, TRAMPOLINE, TRAP_CONTEXT}, stack::KERNEL_STACK, trap::{trap_handler, TrapContext}};
+use crate::{
+    config::{KERNEL_STACK_SIZE, PAGE_SIZE, TRAMPOLINE, TRAP_CONTEXT},
+    mm::{
+        types::{PhysPageNum, VirtAddr},
+        MMStruct, MapPermission, KERNEL_SPACE,
+    },
+    trap::{trap_handler, TrapContext},
+};
 
 use self::manager::TASK_MANAGER;
 
@@ -27,7 +34,7 @@ pub enum TaskStatus {
 pub struct TaskControlBlock {
     pub status: TaskStatus,
     pub ctx: TaskContext,
-    pub memory_set: MemorySet,
+    pub mm: MMStruct,
     pub ctx_ppn: PhysPageNum,
     pub size: usize,
     pub heap_bottom: usize,
@@ -38,33 +45,29 @@ impl TaskControlBlock {
     pub fn get_trap_ctx(&self) -> &'static mut TrapContext {
         self.ctx_ppn.get_mut()
     }
-    
+
     pub fn get_user_token(&self) -> usize {
-        self.memory_set.token()
+        self.mm.token()
     }
 
     pub fn new(app_data: &[u8], app_id: usize) -> Self {
         // memory_set with elf program headers/trampoline/trap context/user stack
-        let (memory_set, user_sp, entry_point) = MemorySet::new_app(app_data);
-        let ctx_ppn = memory_set
-            .translate(VirtAddr::from(TRAP_CONTEXT).into())
-            .unwrap();
+        let (mm, user_sp, entry_point) = MMStruct::new_app(app_data);
+        let ctx_ppn = mm.translate(VirtAddr::from(TRAP_CONTEXT).into()).unwrap();
         let status = TaskStatus::Ready;
 
         let kernel_stack_top = TRAMPOLINE - app_id * (KERNEL_STACK_SIZE + PAGE_SIZE);
         let kernel_stack_bottom = kernel_stack_top - KERNEL_STACK_SIZE;
-        
-        KERNEL_SPACE
-            .borrow_mut()
-            .insert(
-                kernel_stack_bottom.into(),
-                kernel_stack_top.into(),
-                MapPermission::R | MapPermission::W,
-            );
+
+        KERNEL_SPACE.borrow_mut().insert(
+            kernel_stack_bottom.into(),
+            kernel_stack_top.into(),
+            MapPermission::R | MapPermission::W,
+        );
         let task_control_block = Self {
             status,
             ctx: TaskContext::restore(kernel_stack_top),
-            memory_set,
+            mm,
             ctx_ppn,
             size: user_sp,
             heap_bottom: user_sp,
@@ -89,10 +92,10 @@ impl TaskControlBlock {
             return None;
         }
         let result = if size < 0 {
-            self.memory_set
+            self.mm
                 .shrink_to(VirtAddr(self.heap_bottom), VirtAddr(new_brk as usize))
         } else {
-            self.memory_set
+            self.mm
                 .append_to(VirtAddr(self.heap_bottom), VirtAddr(new_brk as usize))
         };
         if result {
