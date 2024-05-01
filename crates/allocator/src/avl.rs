@@ -13,7 +13,7 @@ pub struct AVLTree(usize);
 /// This struct is used to represent a node in AVL Tree. The `data` field may be replaced by the address of the node.
 struct AVLTreeNode {
     data: usize,
-    height: usize,
+    height: isize,
     left: *mut AVLTreeNode,
     right: *mut AVLTreeNode,
 }
@@ -29,7 +29,7 @@ impl AVLTreeNode {
 
 impl AVLTree {
     /// Get the height of the current node
-    fn get_height(node: *mut AVLTreeNode) -> usize {
+    fn get_height(node: *mut AVLTreeNode) -> isize {
         if node.is_null() {
             return 0;
         }
