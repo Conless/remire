@@ -8,19 +8,30 @@
 use core::{alloc::{GlobalAlloc, Layout}, borrow::BorrowMut};
 
 use spin::Mutex;
+pub use stack::StackAllocator;
 
 use self::buddy::BuddyAllocator;
 
 mod buddy;
 mod avl;
+mod stack;
 
-pub struct LockedAllocator(Mutex<BuddyAllocator>);
+pub struct LockedBuddyAllocator(Mutex<BuddyAllocator>);
 
-impl LockedAllocator {
+impl LockedBuddyAllocator {
     pub const fn empty() -> Self {
-        LockedAllocator(Mutex::new(BuddyAllocator::empty()))
+        Self(Mutex::new(BuddyAllocator::empty()))
     }
 
+    /// Initializes the locked buddy allocator with the specified memory range.
+    ///
+    /// # Safety
+    /// This function is unsafe because it operates on raw pointers and can cause undefined behavior if used incorrectly.
+    ///
+    /// # Arguments
+    ///
+    /// * `start` - The starting address of the memory range.
+    /// * `end` - The ending address of the memory range.
     pub unsafe fn init(&self, start: usize, end: usize) {
         unsafe {
             self.0.lock().borrow_mut().add_segment(start, end);
@@ -28,7 +39,7 @@ impl LockedAllocator {
     }
 }
 
-unsafe impl GlobalAlloc for LockedAllocator {
+unsafe impl GlobalAlloc for LockedBuddyAllocator {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
         self.0.lock().borrow_mut().alloc(layout)
     }
