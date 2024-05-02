@@ -16,6 +16,7 @@ use mm::{activate_kernel_space, init_frame_allocator};
 use alloc::boxed::Box;
 use drivers::init_device;
 use allocator::init_heap_allocator;
+use task::pid::init_pid_allocator;
 
 mod allocator;
 mod lang;
@@ -36,6 +37,7 @@ global_asm!(include_str!("link_app.S"));
 extern "C" fn rust_init() -> ! {
     init_heap_allocator();
     init_frame_allocator();
+    init_pid_allocator(0, 16);
     activate_kernel_space();
     rust_main()
 }
@@ -45,6 +47,7 @@ fn rust_main() -> ! {
     trap::init();
     task::load_apps();
     trap::enable_timer_interrupt();
+    task::add_all_tasks();
     task::run_first_task()
 }
 

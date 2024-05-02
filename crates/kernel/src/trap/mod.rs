@@ -15,8 +15,8 @@ use riscv::register::{scause, sie, stval, stvec};
 
 use crate::config::{TRAMPOLINE, TRAP_CONTEXT};
 use crate::syscall::syscall;
-use crate::task::{current_trap_ctx, current_user_token, suspend_to_next};
-use crate::{println, task::exit_to_next};
+use crate::task::{current_trap_ctx, current_user_token, suspend_current_and_run_next};
+use crate::{println, task::exit_current_and_run_next};
 use core::arch::{asm, global_asm};
 
 use self::timer::set_next_interrupt;
@@ -66,7 +66,7 @@ pub fn trap_handler() -> ! {
     match scause.cause() {
         Trap::Interrupt(Interrupt::SupervisorTimer) => {
             set_next_interrupt();
-            suspend_to_next();
+            suspend_current_and_run_next();
         }
         Trap::Exception(Exception::UserEnvCall) => {
             ctx.pc += 4;
@@ -78,11 +78,11 @@ pub fn trap_handler() -> ! {
         | Trap::Exception(Exception::LoadFault)
         | Trap::Exception(Exception::LoadPageFault) => {
             println!("[kernel] PageFault in application, kernel killed it.");
-            exit_to_next();
+            exit_current_and_run_next();
         }
         Trap::Exception(Exception::IllegalInstruction) => {
             println!("[kernel] IllegalInstruction in application, kernel killed it.");
-            exit_to_next();
+            exit_current_and_run_next();
         }
         _ => {
             panic!(
