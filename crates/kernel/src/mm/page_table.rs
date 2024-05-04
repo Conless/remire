@@ -164,6 +164,15 @@ impl PageTable {
         self.find_entry(vpn).map(|entry| *entry)
     }
     
+    pub fn translate_va(&self, va: VirtAddr) -> Option<PhysAddr> {
+        self.find_entry(va.floor()).map(|entry| {
+            let pa: PhysAddr = entry.ppn().into();
+            let offset = va.page_offset();
+            let pa_usize: usize = pa.into();
+            (pa_usize + offset).into()
+        })
+    }
+    
     pub fn token(&self) -> usize {
         8usize << 60 | self.root_ppn.0
     }

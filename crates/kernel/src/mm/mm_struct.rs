@@ -45,6 +45,10 @@ impl MMStruct {
     pub fn token(&self) -> usize {
         self.page_table.token()
     }
+    
+    pub fn recycle(&mut self) {
+        self.areas.clear()
+    }
 
     /// Push a mapped area into the memory set.
     fn push(&mut self, mut map_area: VMArea, data: Option<&[u8]>) {
@@ -81,15 +85,20 @@ impl MMStruct {
         }
     }
 
-    /// Create a kernel address space.
-    pub fn new_kernel() -> Self {
-        let mut mm = Self::default();
-
-        mm.page_table.map(
+    fn map_trampoline(&mut self) {
+        self.page_table.map(
             VirtAddr::from(TRAMPOLINE).into(),
             PhysAddr::from(strampoline as usize).into(),
             PTEFlags::R | PTEFlags::X,
         );
+    }
+
+    /// Create a kernel address space.
+    pub fn new_kernel() -> Self {
+        let mut mm = Self::default();
+
+        // map trampline
+        mm.map_trampoline();
 
         // map kernel sections
         println!(
@@ -181,13 +190,9 @@ impl MMStruct {
     pub fn new_app(app_data: &[u8]) -> (Self, usize, usize) {
         let mut mm = Self::default();
 
-        // map trampoline
-        mm.page_table.map(
-            VirtAddr::from(TRAMPOLINE).into(),
-            PhysAddr::from(strampoline as usize).into(),
-            PTEFlags::R | PTEFlags::X,
-        );
-
+        // map trampline
+        mm.map_trampoline();
+        
         // map app sections
         let elf_data = xmas_elf::ElfFile::new(app_data).unwrap();
         let elf_header = elf_data.header;
@@ -300,7 +305,7 @@ impl MMStruct {
         }
     }
 
-    pub fn shrink_to(&mut self, start: VirtAddr, new_end: VirtAddr) -> bool {
+    fn shrink_to(&mut self, start: VirtAddr, new_end: VirtAddr) -> bool {
         if let Some(area) = self
             .areas
             .iter_mut()
@@ -313,7 +318,7 @@ impl MMStruct {
         }
     }
 
-    pub fn append_to(&mut self, start: VirtAddr, new_end: VirtAddr) -> bool {
+    fn append_to(&mut self, start: VirtAddr, new_end: VirtAddr) -> bool {
         for area in &self.areas {
             println!(
                 "start = {:#x}, end = {:#x}",
@@ -355,5 +360,22 @@ impl MMStruct {
         } else {
             None
         }
+    }
+}
+
+impl Clone for MMStruct {
+    fn clone(&self) -> Self {
+        let mut new_mm = Self::default();
+        new_mm.map_trampoline();
+        for area in &self.areas {
+            // We cannot do deep copy here, since the page table is different
+            new_mm.push(area.clone(), None);
+            for vpn in area.vpn_range {
+                let src_ppn = self.translate(vpn).unwrap();
+                let dst_ppn = new_mm.translate(vpn).unwrap();
+                dst_ppn.get_bytes_array().copy_from_slice(src_ppn.get_bytes_array());
+            }
+        }
+        new_mm
     }
 }

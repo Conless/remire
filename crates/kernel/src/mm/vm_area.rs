@@ -31,10 +31,21 @@ bitflags! {
 ///
 /// `VMArea` represents an area of virtual memory with continuous address in the address space.
 pub struct VMArea {
-    vpn_range: VPNRange, // The range of the virtual page number, can be traversed by Iter.
+    pub vpn_range: VPNRange, // The range of the virtual page number, can be traversed by Iter.
     data_frames: BTreeMap<VirtPageNum, FrameGuard>, // The data frames of the area
     map_type: MapType,
     map_perm: MapPermission,
+}
+
+impl Clone for VMArea {
+    fn clone(&self) -> Self {
+        Self {
+            vpn_range: self.vpn_range,
+            data_frames: BTreeMap::new(),
+            map_type: self.map_type,
+            map_perm: self.map_perm,
+        }
+    }
 }
 
 impl VMArea {
@@ -54,7 +65,7 @@ impl VMArea {
             map_perm,
         }
     }
-
+    
     /// Map a single page.
     pub fn map_one(&mut self, page_table: &mut PageTable, vpn: VirtPageNum) {
         let ppn: PhysPageNum;
