@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-pub const KERNEL_STACK_SIZE: usize = 4096 * 2;
+pub const KERNEL_STACK_SIZE: usize = 4096 * 4;
 pub const USER_STACK_SIZE: usize = 4096;
 
 pub const APP_MAX_NUM: usize = 16;

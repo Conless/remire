@@ -4,6 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use crate::mm::{MapPermission, KERNEL_SPACE};
+use crate::println;
 use crate::{config::*, trap::TrapContext};
 use crate::task::pid::PIDGuard;
 
@@ -23,6 +24,7 @@ impl KernelStack {
     pub fn new(pid: &PIDGuard) -> Self {
         let pid = pid.0;
         let (top, bottom) = get_kernel_stack_addr(pid);
+        println!("[kernel] mapping kernel stack [{:#x}, {:#x})", bottom, top);
         KERNEL_SPACE.borrow_mut().insert(
             bottom.into(),
             top.into(),
