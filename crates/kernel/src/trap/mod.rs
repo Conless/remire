@@ -68,12 +68,17 @@ pub fn trap_handler() -> ! {
             suspend_current_and_run_next();
         }
         Trap::Exception(Exception::UserEnvCall) => {
+            println!("[kernel] receive syscall {:?}.", current_trap_ctx().regs[17]);
             let mut ctx = current_trap_ctx();
             ctx.pc += 4;
-           let result =
+            let result =
                 syscall(ctx.regs[17], [ctx.regs[10], ctx.regs[11], ctx.regs[12]]) as usize;
-           ctx = current_trap_ctx();
-           ctx.regs[10] = result;
+            ctx = current_trap_ctx();
+            ctx.regs[10] = result;
+            println!(
+                "[kernel] return from syscall {:?}, result = {}",
+                ctx.regs[17], ctx.regs[10]
+            );
         }
         Trap::Exception(Exception::StoreFault)
         | Trap::Exception(Exception::StorePageFault)
