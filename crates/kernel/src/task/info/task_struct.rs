@@ -122,7 +122,7 @@ impl TaskStruct {
         let mut inner = self.inner.borrow_mut();
         inner.mm = mm;
         inner.ctx_ppn = inner.mm.translate(VirtAddr::from(TRAP_CONTEXT).into()).unwrap();
-        let trap_ctx = self.get_trap_ctx();
+        let trap_ctx = inner.ctx_ppn.get_mut();
         *trap_ctx = TrapContext::app_init_context(
             entry_point,
             user_sp,

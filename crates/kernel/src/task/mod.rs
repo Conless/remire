@@ -43,6 +43,7 @@ pub fn run_tasks() -> ! {
   loop {
       let mut processor = PROCESSOR.borrow_mut();
       if let Some(task) = pop_task() {
+          println!("[kernel] Task {} start running ...", task.pid.0);
           let idle_task_ctx_ptr = processor.task_ctx_ptr();
           let mut task_inner = task.inner.borrow_mut();
           let next_task_ctx_ptr = &task_inner.ctx as *const TaskContext;
@@ -81,6 +82,7 @@ pub fn current_trap_ctx() -> &'static mut TrapContext {
 
 pub fn suspend_current_and_run_next() {
     let task = take_current_task().unwrap();
+    println!("[kernel] Task {} yield to next task", task.pid.0);
     let mut task_inner = task.inner.borrow_mut();
     let task_ctx_ptr = &mut task_inner.ctx as *mut TaskContext;
     task_inner.status = TaskStatus::Ready;
@@ -97,6 +99,9 @@ pub fn run_first_task() -> ! {
 pub fn exit_current_and_run_next(exit_code: i32) {
     let task = take_current_task().unwrap();
     let pid = task.pid.0;
+    println!(
+        "[kernel] Task {} exit with exit_code {} ...",
+        pid, exit_code);
 
     if pid == 0 {
         println!(
@@ -113,10 +118,12 @@ pub fn exit_current_and_run_next(exit_code: i32) {
     let mut task_inner = task.inner.borrow_mut();
     task_inner.status = TaskStatus::Zombie(exit_code);
     
-    let mut init_task_inner = INITPROC.inner.borrow_mut();
-    for child in task_inner.children.iter() {
-        child.inner.borrow_mut().parent = Some(Arc::downgrade(&INITPROC));
-        init_task_inner.children.push(child.clone());
+    {
+        let mut init_task_inner = INITPROC.inner.borrow_mut();
+        for child in task_inner.children.iter() {
+            child.inner.borrow_mut().parent = Some(Arc::downgrade(&INITPROC));
+            init_task_inner.children.push(child.clone());
+        }
     }
     
     task_inner.children.clear();
@@ -125,6 +132,7 @@ pub fn exit_current_and_run_next(exit_code: i32) {
     drop(task);
 
     let mut empty_ctx = TaskContext::default();
+    println!("Task {} exit, schedule next task ...", pid);
     schedule(&mut empty_ctx as *mut TaskContext)
 }
 
