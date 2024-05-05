@@ -37,7 +37,7 @@ global_asm!(include_str!("link_app.S"));
 extern "C" fn rust_init() -> ! {
     init_heap_allocator();
     init_frame_allocator();
-    init_pid_allocator(0, 16);
+    init_pid_allocator(0, 127);
     activate_kernel_space();
     rust_main()
 }
