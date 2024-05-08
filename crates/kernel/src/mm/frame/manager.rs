@@ -4,7 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 
-use crate::{config::MEMORY_END, sync::UPSafeCell};
+use crate::{config::MEMORY_END, log, println, sync::UPSafeCell};
 
 use super::{FrameGuard, PhysAddr, PhysPageNum};
 
@@ -25,6 +25,8 @@ impl FrameManager for StackAllocator {
   }
 
   fn alloc_frame(&mut self) -> Option<PhysPageNum> {
+      let (current, end) = self.report_usage();
+      println!("Current unused frame: {} -> {}", current, end);
       self.alloc().map(|ppn| ppn.into())
   }
 

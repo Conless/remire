@@ -14,7 +14,7 @@ use super::vm_area::{MapPermission, MapType, VMArea};
 
 use crate::{
     config::{MEMORY_END, MMIO, PAGE_SIZE, TRAMPOLINE, TRAP_CONTEXT},
-    println,
+    log,
 };
 
 /// The memory set of a process
@@ -101,7 +101,7 @@ impl MMStruct {
         mm.map_trampoline();
 
         // map kernel sections
-        println!(
+        log!(
             "[kernel] mapping .text [{:#x}, {:#x})",
             stext as usize, etext as usize
         );
@@ -114,7 +114,7 @@ impl MMStruct {
             ),
             None,
         );
-        println!(
+        log!(
             "[kernel] mapping .rodata [{:#x}, {:#x})",
             srodata as usize, erodata as usize
         );
@@ -127,7 +127,7 @@ impl MMStruct {
             ),
             None,
         );
-        println!(
+        log!(
             "[kernel] mapping .data [{:#x}, {:#x})",
             sdata as usize, edata as usize
         );
@@ -140,7 +140,7 @@ impl MMStruct {
             ),
             None,
         );
-        println!(
+        log!(
             "[kernel] mapping .bss [{:#x}, {:#x})",
             sbss_with_stack as usize, ebss as usize
         );
@@ -154,7 +154,7 @@ impl MMStruct {
             None,
         );
 
-        println!(
+        log!(
             "[kernel] mapping physical memory [{:#x}, {:#x})",
             ekernel as usize, MEMORY_END
         );
@@ -169,7 +169,7 @@ impl MMStruct {
         );
 
         for pair in MMIO {
-            println!(
+            log!(
                 "[kernel] mapping MMIO [{:#x}, {:#x})",
                 pair.0,
                 pair.0 + pair.1
@@ -228,7 +228,7 @@ impl MMStruct {
                             ..(header.offset() + header.file_size()) as usize],
                     ),
                 );
-                println!(
+                log!(
                     "[kernel] mapping app section [{:#x}, {:#x})",
                     usize::from(start_va),
                     usize::from(end_va)
@@ -240,7 +240,7 @@ impl MMStruct {
         let end_va_usize: usize = end_va.into();
         let user_stack_bottom: usize = end_va_usize + PAGE_SIZE;
         let user_stack_top = user_stack_bottom + PAGE_SIZE;
-        println!(
+        log!(
             "[kernel] mapping user stack [{:#x}, {:#x})",
             user_stack_bottom, user_stack_top
         );
@@ -257,7 +257,7 @@ impl MMStruct {
         );
 
         // mapping user heap
-        println!(
+        log!(
             "[kernel] mapping user heap [{:#x}, {:#x})",
             user_stack_top, user_stack_top
         );
@@ -272,7 +272,7 @@ impl MMStruct {
         );
 
         // mapping the trap context
-        println!(
+        log!(
             "[kernel] mapping trap context [{:#x}, {:#x})",
             TRAP_CONTEXT, TRAMPOLINE
         );
@@ -320,13 +320,13 @@ impl MMStruct {
 
     fn append_to(&mut self, start: VirtAddr, new_end: VirtAddr) -> bool {
         for area in &self.areas {
-            println!(
+            log!(
                 "start = {:#x}, end = {:#x}",
                 area.get_start().0,
                 area.get_end().0
             );
         }
-        println!("start = {:#x}, end = {:#x}", start.0, new_end.0);
+        log!("start = {:#x}, end = {:#x}", start.0, new_end.0);
         // panic!();
         if let Some(area) = self
             .areas

@@ -3,10 +3,10 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use alloc::{collections::VecDeque, sync::Arc, vec::Vec};
+use alloc::{collections::VecDeque, sync::Arc};
 use lazy_static::lazy_static;
 
-use crate::{println, sbi::shutdown, sync::UPSafeCell, task::{info::task_struct::TaskStatus, loader::{get_app_data, get_num_app}, switch::__switch, TaskContext}, trap::TrapContext};
+use crate::sync::UPSafeCell;
 
 use super::info::task_struct::TaskStruct;
 

@@ -5,7 +5,7 @@
 
 use alloc::{sync::Weak, sync::Arc, vec::Vec};
 
-use crate::{config::TRAP_CONTEXT, mm::{types::{PhysPageNum, VirtAddr}, MMStruct, KERNEL_SPACE}, stack::KernelStack, sync::UPSafeCell, task::pid::{alloc_pid, PIDGuard}, trap::{trap_handler, TrapContext}};
+use crate::{config::TRAP_CONTEXT, mm::{types::{PhysPageNum, VirtAddr}, MMStruct, KERNEL_SPACE}, log, stack::KernelStack, sync::UPSafeCell, task::pid::{alloc_pid, PIDGuard}, trap::{trap_handler, TrapContext}};
 
 use super::context::TaskContext;
 
@@ -92,6 +92,7 @@ impl TaskStruct {
         let mm = parent_inner.mm.clone();
         let ctx_ppn = mm.translate(VirtAddr::from(TRAP_CONTEXT).into()).unwrap();
         let pid_guard = alloc_pid().unwrap();
+        log!("[kernel] Fork new task {} from task {}", pid_guard.0, self.pid.0);
         let kernel_stack = KernelStack::new(&pid_guard);
         let kernel_stack_top = kernel_stack.get_top();
         let task_struct = Arc::new(

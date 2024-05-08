@@ -22,14 +22,12 @@ pub struct PIDGuard(pub usize);
 
 impl Drop for PIDGuard {
   fn drop(&mut self) {
-      //println!("drop pid {}", self.0);
       PID_ALLOCATOR.borrow_mut().dealloc(self.0);
   }
 }
 
 pub fn alloc_pid() -> Option<PIDGuard> {
   let pid = PID_ALLOCATOR.borrow_mut().alloc();
-  // println!("alloc pid {}", pid);
   pid.map(PIDGuard)
 }
 

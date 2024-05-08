@@ -7,7 +7,7 @@ mod context;
 mod timer;
 
 pub use context::TrapContext;
-pub use timer::get_time;
+pub use timer::{get_time, get_time_ms};
 
 use riscv::register::scause::{Exception, Interrupt, Trap};
 use riscv::register::utvec::TrapMode;
@@ -16,7 +16,7 @@ use riscv::register::{scause, sie, stval, stvec};
 use crate::config::{TRAMPOLINE, TRAP_CONTEXT};
 use crate::syscall::syscall;
 use crate::task::{current_trap_ctx, current_user_token, suspend_current_and_run_next};
-use crate::{println, task::exit_current_and_run_next};
+use crate::{println, log, task::exit_current_and_run_next};
 use core::arch::{asm, global_asm};
 
 use self::timer::set_next_interrupt;
@@ -68,7 +68,7 @@ pub fn trap_handler() -> ! {
             suspend_current_and_run_next();
         }
         Trap::Exception(Exception::UserEnvCall) => {
-            println!("[kernel] receive syscall {:?}.", current_trap_ctx().regs[17]);
+            log!("[kernel] receive syscall {:?}.", current_trap_ctx().regs[17]);
             let mut ctx = current_trap_ctx();
             ctx.pc += 4;
             let result =

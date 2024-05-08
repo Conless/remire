@@ -3,8 +3,9 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
+use crate::mm::types::VirtAddr;
 use crate::mm::{MapPermission, KERNEL_SPACE};
-use crate::println;
+use crate::log;
 use crate::{config::*, trap::TrapContext};
 use crate::task::pid::PIDGuard;
 
@@ -24,7 +25,7 @@ impl KernelStack {
     pub fn new(pid: &PIDGuard) -> Self {
         let pid = pid.0;
         let (top, bottom) = get_kernel_stack_addr(pid);
-        println!("[kernel] mapping kernel stack [{:#x}, {:#x})", bottom, top);
+        log!("[kernel] mapping kernel stack [{:#x}, {:#x})", bottom, top);
         KERNEL_SPACE.borrow_mut().insert(
             bottom.into(),
             top.into(),
@@ -40,6 +41,10 @@ impl KernelStack {
 
 impl Drop for KernelStack {
     fn drop(&mut self) {
-        KERNEL_SPACE.borrow_mut().remove(self.bottom.into());
+        log!(
+            "[kernel] unmapping kernel stack [{:#x}, {:#x})",
+            self.bottom, self.top);
+        let start_va: VirtAddr = self.bottom.into();
+        KERNEL_SPACE.borrow_mut().remove(start_va.into());
     }
 }

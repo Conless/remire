@@ -13,11 +13,12 @@ mod switch;
 use alloc::sync::Arc;
 use lazy_static::lazy_static;
 use switch::__switch;
-use crate::{println, sbi::shutdown, sync::UPSafeCell};
+use crate::{log, sbi::shutdown, sync::UPSafeCell};
 pub use info::context::TaskContext;
 use info::task_struct::{TaskStatus, TaskStruct};
 use loader::{get_app_data, get_app_data_by_name, get_num_app};
 pub use loader::load_apps;
+pub use loader::list_apps;
 use manager::{add_task, pop_task};
 use proc::Processor;
 
@@ -43,7 +44,7 @@ pub fn run_tasks() -> ! {
   loop {
       let mut processor = PROCESSOR.borrow_mut();
       if let Some(task) = pop_task() {
-          println!("[kernel] Task {} start running ...", task.pid.0);
+          log!("[kernel] Task {} start running ...", task.pid.0);
           let idle_task_ctx_ptr = processor.task_ctx_ptr();
           let mut task_inner = task.inner.borrow_mut();
           let next_task_ctx_ptr = &task_inner.ctx as *const TaskContext;
@@ -82,7 +83,7 @@ pub fn current_trap_ctx() -> &'static mut TrapContext {
 
 pub fn suspend_current_and_run_next() {
     let task = take_current_task().unwrap();
-    println!("[kernel] Task {} yield to next task", task.pid.0);
+    log!("[kernel] Task {} yield to next task", task.pid.0);
     let mut task_inner = task.inner.borrow_mut();
     let task_ctx_ptr = &mut task_inner.ctx as *mut TaskContext;
     task_inner.status = TaskStatus::Ready;
@@ -99,12 +100,12 @@ pub fn run_first_task() -> ! {
 pub fn exit_current_and_run_next(exit_code: i32) {
     let task = take_current_task().unwrap();
     let pid = task.pid.0;
-    println!(
+    log!(
         "[kernel] Task {} exit with exit_code {} ...",
         pid, exit_code);
 
     if pid == 0 {
-        println!(
+        log!(
             "[kernel] Idle process exit with exit_code {} ...",
             exit_code
         );
@@ -132,7 +133,7 @@ pub fn exit_current_and_run_next(exit_code: i32) {
     drop(task);
 
     let mut empty_ctx = TaskContext::default();
-    println!("Task {} exit, schedule next task ...", pid);
+    log!("Task {} exit, schedule next task ...", pid);
     schedule(&mut empty_ctx as *mut TaskContext)
 }
 

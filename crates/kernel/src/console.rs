@@ -57,3 +57,12 @@ macro_rules! println {
         $crate::print!("\r\n");
     }
 }
+
+#[macro_export]
+macro_rules! log {
+    ($($arg:tt)*) => {
+        if $crate::config::LOG {
+            $crate::println!($($arg)*);
+        }
+    }
+}
