@@ -7,9 +7,10 @@ use alloc::sync::Arc;
 //
 use crate::task::loader::get_app_data_by_name;
 use crate::task::manager::add_task;
+use crate::trap::get_time_ms;
 use crate::{
     mm::{translated_byte_buffer, translated_ptr, translated_str},
-    println,
+    log,
     task::{
         current_task, current_user_token, exit_current_and_run_next, suspend_current_and_run_next,
     },
@@ -20,19 +21,23 @@ use crate::{
 ///
 /// This function will print the exit code of the application and run the next application.
 pub fn sys_exit(exit_code: i32) -> ! {
-    println!("[kernel] Application exited with code {}", exit_code);
+    log!("[kernel] Application exited with code {}", exit_code);
     exit_current_and_run_next(exit_code);
     unreachable!()
 }
 
 pub fn sys_yield() -> isize {
-    // println!("[kernel] Yield to next task");
+    // log!("[kernel] Yield to next task");
     suspend_current_and_run_next();
     0
 }
 
 pub fn sys_get_time() -> isize {
-    get_time() as isize
+    get_time_ms() as isize
+}
+
+pub fn sys_getpid() -> isize {
+    current_task().unwrap().pid.0 as isize
 }
 
 pub fn sys_fork() -> isize {

@@ -25,8 +25,6 @@ impl FrameManager for StackAllocator {
   }
 
   fn alloc_frame(&mut self) -> Option<PhysPageNum> {
-      let (current, end) = self.report_usage();
-      println!("Current unused frame: {} -> {}", current, end);
       self.alloc().map(|ppn| ppn.into())
   }
 
