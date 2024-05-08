@@ -4,15 +4,22 @@
 // LICENSE file in the root directory of this source tree.
 
 mod context;
+mod timer;
 
 pub use context::TrapContext;
-use riscv::register::scause::{Exception, Trap};
-use riscv::register::utvec::TrapMode;
-use riscv::register::{scause, stval, stvec};
+pub use timer::{get_time, get_time_ms};
 
+use riscv::register::scause::{Exception, Interrupt, Trap};
+use riscv::register::utvec::TrapMode;
+use riscv::register::{scause, sie, stval, stvec};
+
+use crate::config::{TRAMPOLINE, TRAP_CONTEXT};
 use crate::syscall::syscall;
-use crate::{batch::run_next_app, println};
-use core::arch::global_asm;
+use crate::task::{current_trap_ctx, current_user_token, suspend_current_and_run_next};
+use crate::{println, log, task::exit_current_and_run_next};
+use core::arch::{asm, global_asm};
+
+use self::timer::set_next_interrupt;
 
 global_asm!(include_str!("trap.S"));
 
@@ -20,34 +27,69 @@ global_asm!(include_str!("trap.S"));
 ///
 /// Set the trap entry to `__alltraps` in `trap.S`
 pub fn init() {
-    extern "C" {
-        fn __alltraps();
-    }
+    set_kernel_trap_entry()
+}
+
+fn set_kernel_trap_entry() {
     unsafe {
-        stvec::write(__alltraps as usize, TrapMode::Direct);
+        stvec::write(trap_from_kernel as usize, TrapMode::Direct);
     }
+}
+
+fn set_user_trap_entry() {
+    unsafe {
+        stvec::write(TRAMPOLINE, TrapMode::Direct);
+    }
+}
+
+#[no_mangle]
+pub fn trap_from_kernel() -> ! {
+    panic!("a trap from kernel!");
+}
+
+pub fn enable_timer_interrupt() {
+    unsafe {
+        sie::set_stimer();
+    }
+    set_next_interrupt();
 }
 
 /// Trap handler
 ///
 /// This function is the entry of handler of traps from user mode to supervisor mode.
 #[no_mangle]
-pub fn trap_handler(ctx: &mut TrapContext) -> &mut TrapContext {
+pub fn trap_handler() -> ! {
+    set_kernel_trap_entry();
     let scause = scause::read();
     let stval = stval::read();
     match scause.cause() {
-        Trap::Exception(Exception::UserEnvCall) => {
-            ctx.pc += 4;
-            ctx.regs[10] =
-                syscall(ctx.regs[17], [ctx.regs[10], ctx.regs[11], ctx.regs[12]]) as usize;
+        Trap::Interrupt(Interrupt::SupervisorTimer) => {
+            set_next_interrupt();
+            suspend_current_and_run_next();
         }
-        Trap::Exception(Exception::StoreFault) | Trap::Exception(Exception::StorePageFault) => {
+        Trap::Exception(Exception::UserEnvCall) => {
+            log!("[kernel] receive syscall {:?}.", current_trap_ctx().regs[17]);
+            let mut ctx = current_trap_ctx();
+            ctx.pc += 4;
+            let result =
+                syscall(ctx.regs[17], [ctx.regs[10], ctx.regs[11], ctx.regs[12]]) as usize;
+            ctx = current_trap_ctx();
+            ctx.regs[10] = result;
+            println!(
+                "[kernel] return from syscall {:?}, result = {}",
+                ctx.regs[17], ctx.regs[10]
+            );
+        }
+        Trap::Exception(Exception::StoreFault)
+        | Trap::Exception(Exception::StorePageFault)
+        | Trap::Exception(Exception::LoadFault)
+        | Trap::Exception(Exception::LoadPageFault) => {
             println!("[kernel] PageFault in application, kernel killed it.");
-            run_next_app();
+            exit_current_and_run_next(-2);
         }
         Trap::Exception(Exception::IllegalInstruction) => {
             println!("[kernel] IllegalInstruction in application, kernel killed it.");
-            run_next_app();
+            exit_current_and_run_next(-3);
         }
         _ => {
             panic!(
@@ -57,5 +99,27 @@ pub fn trap_handler(ctx: &mut TrapContext) -> &mut TrapContext {
             );
         }
     }
-    ctx
+    trap_return()
+}
+
+#[no_mangle]
+pub fn trap_return() -> ! {
+    set_user_trap_entry();
+    let trap_ctx_ptr = TRAP_CONTEXT;
+    let user_satp = current_user_token();
+    extern "C" {
+        fn __alltraps();
+        fn __restore();
+    }
+    let restore_va = __restore as usize - __alltraps as usize + TRAMPOLINE;
+    unsafe {
+        asm!(
+            "fence.i",
+            "jr {restore_va}",
+            restore_va = in(reg) restore_va,
+            in("a0") trap_ctx_ptr,
+            in("a1") user_satp,
+            options(noreturn)
+        );
+    }
 }

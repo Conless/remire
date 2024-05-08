@@ -5,7 +5,7 @@
 
 use core::panic::PanicInfo;
 
-use drivers::println;
+use crate::println;
 
 use crate::sbi::shutdown;
 

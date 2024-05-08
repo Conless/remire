@@ -3,8 +3,13 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
+use std::io::Write;
 use std::{
-    env, fs, os::unix::process::CommandExt, path::{Path, PathBuf}, process::Command
+    env,
+    fs::{self, read_dir, File},
+    os::unix::process::CommandExt,
+    path::{Path, PathBuf},
+    process::Command,
 };
 
 use clap::clap_app;
@@ -25,11 +30,18 @@ fn project_root() -> PathBuf {
 }
 
 /// Convert a command to a string
-/// 
+///
 /// Since `std::process::Command` does not implement `Display`, we need to implement it
 fn command_to_string(command: &std::process::Command) -> String {
-    let args = command.get_args().map(|arg| arg.to_string_lossy()).collect::<Vec<_>>();
-    format!("{} {}", command.get_program().to_string_lossy(), args.join(" "))
+    let args = command
+        .get_args()
+        .map(|arg| arg.to_string_lossy())
+        .collect::<Vec<_>>();
+    format!(
+        "{} {}",
+        command.get_program().to_string_lossy(),
+        args.join(" ")
+    )
 }
 
 /// Compile stage
@@ -50,6 +62,8 @@ fn compile(mode: &BuildMode) -> bool {
     let ld = project_root().join("target/riscv64gc-unknown-none-elf/linker.ld");
     println!("[build] Writing linker script to {}", ld.to_str().unwrap());
     fs::write(&ld, LINKER).unwrap();
+    println!("[build] Writing app data to crates/kernel/src/link_app.S");
+    insert_app_data().unwrap();
     let mut command = Command::new(cargo);
     command
         .arg("build")
@@ -58,7 +72,10 @@ fn compile(mode: &BuildMode) -> bool {
     if let BuildMode::Release = mode {
         command.arg("--release");
     }
-    command.env("RUSTFLAGS", "-C link-arg=-T".to_string() + ld.to_str().unwrap() + " -C force-frame-pointers=yes");
+    command.env(
+        "RUSTFLAGS",
+        "-C link-arg=-T".to_string() + ld.to_str().unwrap() + " -C force-frame-pointers=yes",
+    );
     command.current_dir(project_root());
     println!("[build] Running command: {}", command_to_string(&command));
     let status = command.status();
@@ -98,7 +115,7 @@ fn compile_bios(mode: &BuildMode) -> bool {
 }
 
 /// Convert ELF to binary
-/// 
+///
 /// This function uses `rust-objcopy` to convert the ELF file to a binary file
 /// The parameter `mode` is used to determine the path of the Elf file
 fn objcopy(mode: &BuildMode) -> bool {
@@ -175,7 +192,7 @@ fn qemu_run(mode: &BuildMode) -> bool {
         .arg("-bios")
         .arg(bios_bin.to_str().unwrap())
         .arg("-device")
-        .arg("loader,file=".to_string() + kernel_bin.to_str().unwrap()+ ",addr=0x80200000");
+        .arg("loader,file=".to_string() + kernel_bin.to_str().unwrap() + ",addr=0x80200000");
     println!("[run] Running command: {}", command_to_string(&command));
     let status = command.status();
     if let Err(e) = status {
@@ -209,7 +226,10 @@ fn disasm(mode: &BuildMode) -> bool {
     fs::write(&tmp_asm, output.unwrap().stdout).unwrap();
     let mut vim_command = Command::new("vim");
     vim_command.arg(tmp_asm.to_str().unwrap());
-    println!("[disasm] Running command: {}", command_to_string(&vim_command));
+    println!(
+        "[disasm] Running command: {}",
+        command_to_string(&vim_command)
+    );
     let status = vim_command.status();
     if let Err(e) = status {
         eprintln!("Failed to execute vim: {}", e);
@@ -243,7 +263,7 @@ fn qemu_debug(mode: &BuildMode) -> bool {
         .arg("-bios")
         .arg(bios_bin.to_str().unwrap())
         .arg("-device")
-        .arg("loader,file=".to_string() + kernel_bin.to_str().unwrap()+ ",addr=0x80200000")
+        .arg("loader,file=".to_string() + kernel_bin.to_str().unwrap() + ",addr=0x80200000")
         .arg("-s")
         .arg("-S");
     println!("[run] Running command: {}", command_to_string(&command));
@@ -279,7 +299,61 @@ fn gdb(mode: &BuildMode) -> bool {
         return false;
     }
     status.unwrap().success()
+}
 
+static TARGET_PATH: &str = "crates/user/target/riscv64gc-unknown-none-elf/release/";
+
+fn insert_app_data() -> Result<(), std::io::Error> {
+    let mut f = File::create(project_root().join("crates/kernel/src/link_app.S")).unwrap();
+    let mut apps: Vec<_> = read_dir(project_root().join("crates/user/src/bin"))
+        .unwrap()
+        .map(|dir_entry| {
+            let mut name_with_ext = dir_entry.unwrap().file_name().into_string().unwrap();
+            name_with_ext.drain(name_with_ext.find('.').unwrap()..name_with_ext.len());
+            name_with_ext
+        })
+        .collect();
+    apps.sort();
+
+    writeln!(
+        f,
+        r#"
+    .align 3
+    .section .data
+    .global _num_app
+_num_app:
+    .quad {}"#,
+        apps.len()
+    )?;
+
+    for i in 0..apps.len() {
+        writeln!(f, r#"    .quad app_{}_start"#, i)?;
+    }
+    writeln!(f, r#"    .quad app_{}_end"#, apps.len() - 1)?;
+    
+    writeln!(f, r#"
+    .global _app_names
+    _app_names:"#)?;
+    for app in apps.iter() {
+        writeln!(f, r#"    .string "{}""#, app)?;
+    }
+
+    for (idx, app) in apps.iter().enumerate() {
+        println!("app_{}: {}", idx, app);
+        writeln!(
+            f,
+            r#"
+    .section .data
+    .global app_{0}_start
+    .global app_{0}_end
+    .align 3
+app_{0}_start:
+    .incbin "{2}{1}"
+app_{0}_end:"#,
+            idx, app, project_root().join(TARGET_PATH).to_str().unwrap()
+        )?;
+    }
+    Ok(())
 }
 
 fn main() {
@@ -307,7 +381,8 @@ fn main() {
     )
     .get_matches();
 
-    let mut task_queue: Vec<(&str, Box<dyn Fn(&BuildMode) -> bool>)> = vec![];
+    type TaskFunc = fn(&BuildMode) -> bool;
+    let mut task_queue: Vec<(&str, Box<TaskFunc>)> = vec![];
     let mut mode: BuildMode = BuildMode::Debug;
 
     if let Some(matches) = matches.subcommand_matches("build") {
@@ -360,6 +435,10 @@ SECTIONS
     stext = .;
     .text : {
         *(.text.entry)
+        . = ALIGN(4K);
+        strampoline = .;
+        *(.text.trampoline);
+        . = ALIGN(4K);
         *(.text .text.*)
     }
 
@@ -381,6 +460,7 @@ SECTIONS
 
     . = ALIGN(4K);
     edata = .;
+    sbss_with_stack = .;
     .bss : {
         *(.bss.stack)
         sbss = .;

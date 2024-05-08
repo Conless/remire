@@ -1,25 +1,30 @@
-//! SBI call wrappers
+// Copyright (c) 2024 Conless Pan
 
-/// use sbi call to putchar in console (qemu uart handler)
+// This source code is licensed under the MIT license found in the
+// LICENSE file in the root directory of this source tree.
+
+use sbi_rt::{NoReason, Shutdown, SystemFailure};
+
 pub fn console_putchar(c: usize) {
     #[allow(deprecated)]
     sbi_rt::legacy::console_putchar(c);
 }
 
-// use sbi call to getchar from console (qemu uart handler)
 #[allow(unused)]
 pub fn console_getchar() -> usize {
     #[allow(deprecated)]
     sbi_rt::legacy::console_getchar()
 }
 
-/// use sbi call to shutdown the kernel
+pub fn set_timer(timer: usize) {
+    sbi_rt::set_timer(timer as _);
+}
+
 pub fn shutdown(failure: bool) -> ! {
-    use sbi_rt::{system_reset, NoReason, Shutdown, SystemFailure};
     if !failure {
-        system_reset(Shutdown, NoReason);
+        sbi_rt::system_reset(Shutdown, NoReason);
     } else {
-        system_reset(Shutdown, SystemFailure);
+        sbi_rt::system_reset(Shutdown, SystemFailure);
     }
     unreachable!()
 }
