@@ -12,6 +12,7 @@ use super::page::{VirtAddr, VirtPageNum};
 use super::page_table::{PTEFlags, PageTable};
 use super::vm_area::{MapPermission, MapType, VMArea};
 
+use crate::config::USER_STACK_SIZE;
 use crate::{
     config::{MEMORY_END, MMIO, PAGE_SIZE, TRAMPOLINE, TRAP_CONTEXT},
     log,
@@ -239,7 +240,7 @@ impl MMStruct {
         let end_va: VirtAddr = mm.areas.last().unwrap().get_end().into();
         let end_va_usize: usize = end_va.into();
         let user_stack_bottom: usize = end_va_usize + PAGE_SIZE;
-        let user_stack_top = user_stack_bottom + PAGE_SIZE;
+        let user_stack_top = user_stack_bottom + USER_STACK_SIZE;
         log!(
             "[kernel] mapping user stack [{:#x}, {:#x})",
             user_stack_bottom, user_stack_top

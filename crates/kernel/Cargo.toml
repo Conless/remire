@@ -3,6 +3,7 @@ name = "kernel"
 version = "0.1.0"
 authors = [ "Conless Pan <conlesspan@outlook.com>" ]
 edition = "2021"
+build = "build.rs"
 
 [dependencies]
 bitflags = "1.2.1"
@@ -13,3 +14,4 @@ drivers = { path = "../drivers" }
 sbi-rt = { version = "0.0.2", features = ["legacy"] }
 spin = "0.9"
 xmas-elf = "0.7.0"
+user_lib = { path = "../app" }

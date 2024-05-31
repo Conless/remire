@@ -17,7 +17,6 @@ use crate::{log, sbi::shutdown, sync::UPSafeCell};
 pub use info::context::TaskContext;
 use info::task_struct::{TaskStatus, TaskStruct};
 use loader::{get_app_data, get_app_data_by_name, get_num_app};
-pub use loader::load_apps;
 pub use loader::list_apps;
 use manager::{add_task, pop_task};
 use proc::Processor;
