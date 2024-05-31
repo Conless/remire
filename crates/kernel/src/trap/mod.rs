@@ -75,7 +75,7 @@ pub fn trap_handler() -> ! {
                 syscall(ctx.regs[17], [ctx.regs[10], ctx.regs[11], ctx.regs[12]]) as usize;
             ctx = current_trap_ctx();
             ctx.regs[10] = result;
-            println!(
+            log!(
                 "[kernel] return from syscall {:?}, result = {}",
                 ctx.regs[17], ctx.regs[10]
             );

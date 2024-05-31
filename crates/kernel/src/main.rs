@@ -45,7 +45,6 @@ extern "C" fn rust_init() -> ! {
 fn rust_main() -> ! {
     log!("[kernel] Hello, World!");
     trap::init();
-    task::load_apps();
     task::list_apps();
     trap::enable_timer_interrupt();
     task::add_all_tasks();
