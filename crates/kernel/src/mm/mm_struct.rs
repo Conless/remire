@@ -13,6 +13,7 @@ use super::page_table::{PTEFlags, PageTable};
 use super::vm_area::{MapPermission, MapType, VMArea};
 
 use crate::config::USER_STACK_SIZE;
+use crate::stack::KernelStack;
 use crate::{
     config::{MEMORY_END, MMIO, PAGE_SIZE, TRAMPOLINE, TRAP_CONTEXT},
     log,
@@ -26,6 +27,7 @@ pub struct MMStruct {
     page_table: PageTable,
     areas: Vec<VMArea>,
     brk: usize,
+    kernel_stack: KernelStack,
     heap_bottom: usize,
 }
 
@@ -45,6 +47,10 @@ extern "C" {
 impl MMStruct {
     pub fn token(&self) -> usize {
         self.page_table.token()
+    }
+
+    pub fn kernel_stack_top(&self) -> usize {
+        self.kernel_stack.get_top()
     }
     
     pub fn recycle(&mut self) {
@@ -193,6 +199,9 @@ impl MMStruct {
 
         // map trampline
         mm.map_trampoline();
+        
+        // map kernel stack
+        mm.kernel_stack.init();
         
         // map app sections
         let elf_data = xmas_elf::ElfFile::new(app_data).unwrap();
@@ -368,6 +377,7 @@ impl Clone for MMStruct {
     fn clone(&self) -> Self {
         let mut new_mm = Self::default();
         new_mm.map_trampoline();
+        new_mm.kernel_stack.init();
         for area in &self.areas {
             // We cannot do deep copy here, since the page table is different
             new_mm.push(area.clone(), None);

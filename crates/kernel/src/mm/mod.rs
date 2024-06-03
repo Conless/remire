@@ -8,79 +8,89 @@ mod mm_struct;
 mod page;
 mod page_table;
 mod vm_area;
+mod translation;
 
-use alloc::{string::String, sync::Arc, vec::Vec};
+use alloc::{collections::BTreeMap, string::String, sync::Arc, vec::Vec};
 use lazy_static::lazy_static;
 
-use page::{StepByOne, VirtAddr, VirtPageNum};
+use mm_struct::MMStruct;
+use page::StepByOne;
 use page_table::PageTable;
 
-use crate::sync::UPSafeCell;
+use ksync::UPSafeCell;
 
 pub use frame::init_frame_allocator;
-pub use mm_struct::MMStruct;
-pub use vm_area::{MapPermission, MapType, VMArea};
+pub use page::VirtAddr;
+pub use vm_area::MapPermission;
+pub use translation::*;
+
+use crate::{config::TRAP_CONTEXT, trap::{trap_handler, TrapContext}};
 
 pub mod types {
     pub use super::frame::{PhysAddr, PhysPageNum};
-    pub use super::page::{Range, StepByOne, VPNRange, VirtAddr, VirtPageNum};
 }
 
 lazy_static! {
   /// a memory set instance through lazy_static! managing kernel space
   pub static ref KERNEL_SPACE: Arc<UPSafeCell<MMStruct>> =
       Arc::new(unsafe { UPSafeCell::new(MMStruct::new_kernel()) });
+  pub static ref USER_SPACES: UPSafeCell<BTreeMap<usize, MMStruct>> = 
+      unsafe { UPSafeCell::new(BTreeMap::new()) };
 }
 
 pub fn activate_kernel_space() {
     KERNEL_SPACE.borrow_mut().activate();
 }
 
-/// translate a pointer to a mutable u8 Vec through page table
-pub fn translated_byte_buffer(token: usize, ptr: *const u8, len: usize) -> Vec<&'static mut [u8]> {
-    let page_table = PageTable::from(token);
-    let mut start = ptr as usize;
-    let end = start + len;
-    let mut v = Vec::new();
-    while start < end {
-        let start_va = VirtAddr::from(start);
-        let mut vpn = start_va.floor();
-        let ppn = page_table.translate(vpn).unwrap().ppn();
-        vpn.step();
-        let mut end_va: VirtAddr = vpn.into();
-        end_va = end_va.min(VirtAddr::from(end));
-        if end_va.page_offset() == 0 {
-            v.push(&mut ppn.get_bytes_array()[start_va.page_offset()..]);
-        } else {
-            v.push(&mut ppn.get_bytes_array()[start_va.page_offset()..end_va.page_offset()]);
-        }
-        start = end_va.into();
+pub fn get_kernel_stack(token: usize) -> usize {
+    let user_spaces = USER_SPACES.borrow_mut();
+    let mm = user_spaces.get(&token).unwrap();
+    let sp = mm.kernel_stack_top();
+    if sp == 0 {
+        panic!("kernel stack is not initialized");
     }
-    v
+    sp
 }
 
-pub fn translated_str(token: usize, ptr: *const u8) -> String {
-    let page_table = PageTable::from(token);
-    let mut string = String::new();
-    let mut va = ptr as usize;
-    loop {
-        let ch: u8 = *(page_table
-            .translate_va(VirtAddr::from(va))
-            .unwrap()
-            .get_mut());
-        if ch == 0 {
-            break;
-        } else {
-            string.push(ch as char);
-            va += 1;
-        }
-    }
-    string
+pub fn get_trap_ctx(token: usize) -> &'static mut TrapContext {
+    let user_spaces = USER_SPACES.borrow_mut();
+    let mm = user_spaces.get(&token).unwrap();
+    let trap_ctx_ppn = mm.translate(VirtAddr::from(TRAP_CONTEXT).into()).unwrap();
+    trap_ctx_ppn.get_mut()
 }
 
-pub fn translated_ptr<T>(token: usize, ptr: *mut T) -> *mut T {
-    let page_table = PageTable::from(token);
-    let va = ptr as usize;
-    let addr: usize = page_table.translate_va(VirtAddr::from(va)).unwrap().into();
-    addr as *mut T
+pub fn new_user_space(elf_data: &[u8]) -> usize {
+    let (mm, user_sp, entry_point) = MMStruct::new_app(elf_data);
+    let trap_ctx_ppn = mm.translate(VirtAddr::from(TRAP_CONTEXT).into()).unwrap();
+    let trap_ctx: &mut TrapContext = trap_ctx_ppn.get_mut();
+    *trap_ctx = TrapContext::app_init_context(
+        entry_point,
+        user_sp,
+        KERNEL_SPACE.borrow_mut().token(),
+        mm.kernel_stack_top(),
+        trap_handler as usize,
+    );
+    let token = mm.token();
+    USER_SPACES.borrow_mut().insert(token, mm);
+    token
+}
+
+pub fn new_user_space_from_token(token: usize) -> usize {
+    let mm = USER_SPACES.borrow_mut().get(&token).unwrap().clone();
+    let trap_ctx_ppn = mm.translate(VirtAddr::from(TRAP_CONTEXT).into()).unwrap();
+    let trap_ctx: &mut TrapContext = trap_ctx_ppn.get_mut();
+    trap_ctx.sp = mm.kernel_stack_top();
+    let token = mm.token();
+    USER_SPACES.borrow_mut().insert(token, mm);
+    token
+} 
+
+pub fn remove_user_space(token: usize) {
+    USER_SPACES.borrow_mut().remove(&token);
+}
+
+pub fn change_program_brk(token: usize, size: i32) -> Option<usize> {
+    let mut user_spaces = USER_SPACES.borrow_mut();
+    let mm = user_spaces.get_mut(&token).unwrap();
+    mm.change_brk(size)
 }
