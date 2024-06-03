@@ -16,19 +16,21 @@ use mm::{activate_kernel_space, init_frame_allocator};
 use alloc::boxed::Box;
 use drivers::init_device;
 use allocator::init_heap_allocator;
-use task::pid::init_pid_allocator;
+use sched::add_process;
+use task::init_task_manager;
 
 mod allocator;
 mod lang;
 mod sbi;
 mod config;
 mod console;
+mod loader;
 mod trap;
 mod stack;
 mod syscall;
-mod sync;
 mod task;
 mod mm;
+mod sched;
 
 global_asm!(include_str!("entry.S"));
 global_asm!(include_str!("link_app.S"));
@@ -37,18 +39,22 @@ global_asm!(include_str!("link_app.S"));
 extern "C" fn rust_init() -> ! {
     init_heap_allocator();
     init_frame_allocator();
-    init_pid_allocator(0, 127);
     activate_kernel_space();
     rust_main()
+}
+
+fn add_init_process() {
+    let (pid, token) = init_task_manager();
+    add_process(pid, token)
 }
 
 fn rust_main() -> ! {
     log!("[kernel] Hello, World!");
     trap::init();
-    task::list_apps();
+    loader::list_apps();
     trap::enable_timer_interrupt();
-    task::add_all_tasks();
-    task::run_first_task()
+    add_init_process();
+    sched::start_schedule()
 }
 
 /// This function is made only to make `cargo test` and analyzer happy
