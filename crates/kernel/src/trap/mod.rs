@@ -14,9 +14,10 @@ use riscv::register::utvec::TrapMode;
 use riscv::register::{scause, sie, stval, stvec};
 
 use crate::config::{TRAMPOLINE, TRAP_CONTEXT};
+use crate::{log, println};
+use crate::sched::proc::{current_trap_ctx, current_user_token};
+use crate::sched::{exit_current_and_run_next, suspend_current_and_run_next};
 use crate::syscall::syscall;
-use crate::task::{current_trap_ctx, current_user_token, suspend_current_and_run_next};
-use crate::{println, log, task::exit_current_and_run_next};
 use core::arch::{asm, global_asm};
 
 use self::timer::set_next_interrupt;
@@ -68,17 +69,17 @@ pub fn trap_handler() -> ! {
             suspend_current_and_run_next();
         }
         Trap::Exception(Exception::UserEnvCall) => {
-            log!("[kernel] receive syscall {:?}.", current_trap_ctx().regs[17]);
+            // log!("[kernel] receive syscall {:?}.", current_trap_ctx().regs[17]);
             let mut ctx = current_trap_ctx();
             ctx.pc += 4;
             let result =
                 syscall(ctx.regs[17], [ctx.regs[10], ctx.regs[11], ctx.regs[12]]) as usize;
             ctx = current_trap_ctx();
             ctx.regs[10] = result;
-            log!(
-                "[kernel] return from syscall {:?}, result = {}",
-                ctx.regs[17], ctx.regs[10]
-            );
+            // log!(
+            //     "[kernel] return from syscall {:?}, result = {}",
+            //     ctx.regs[17], ctx.regs[10]
+            // );
         }
         Trap::Exception(Exception::StoreFault)
         | Trap::Exception(Exception::StorePageFault)
