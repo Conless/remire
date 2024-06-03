@@ -7,11 +7,13 @@ use alloc::vec::Vec;
 use allocator::StackAllocator;
 use lazy_static::lazy_static;
 
-use crate::sync::UPSafeCell;
+use ksync::UPSafeCell;
+
+use crate::config::MAX_PID;
 
 lazy_static! {
     pub static ref PID_ALLOCATOR: UPSafeCell<StackAllocator> = 
-      unsafe { UPSafeCell::new(StackAllocator::default()) };
+      unsafe { UPSafeCell::new(StackAllocator::new(1, MAX_PID)) };
 }
 
 pub fn init_pid_allocator(min: usize, max: usize) {

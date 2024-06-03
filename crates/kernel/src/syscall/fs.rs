@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use crate::{mm::translated_byte_buffer, print, sbi::console_getchar, task::{current_user_token, suspend_current_and_run_next}};
+use crate::{mm::translated_byte_buffer, print, sbi::console_getchar, sched::{proc::current_user_token, suspend_current_and_run_next}};
 
 const FD_STDIN: usize = 0;
 const FD_STDOUT: usize = 1;
