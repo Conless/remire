@@ -3,7 +3,8 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-pub const KERNEL_STACK_SIZE: usize = 4096 * 4;
+pub const KERNEL_STACK_SIZE: usize = 4096 * 16;
+pub const KERNEL_STACK_NUM: usize = 256;
 pub const USER_STACK_SIZE: usize = 4096 * 4;
 
 pub const APP_MAX_NUM: usize = 16;
@@ -24,4 +25,6 @@ pub const MMIO: &[(usize, usize)] = &[
     (0x0010_0000, 0x00_2000), // VIRT_TEST/RTC  in virt machine
 ];
 
-pub const LOG: bool = false;
+pub const LOG: bool = true;
+
+pub const MAX_PID: usize = 255;
