@@ -6,8 +6,7 @@
 #![no_std]
 
 mod cell;
-mod msg;
-
+pub mod msg;
 pub mod task;
 
 pub use cell::UPSafeCell;

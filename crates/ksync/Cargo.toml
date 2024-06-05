@@ -5,3 +5,4 @@ authors = [ "Conless Pan <conlesspan@outlook.com>" ]
 edition = "2021"
 
 [dependencies]
+spin = "0.9"

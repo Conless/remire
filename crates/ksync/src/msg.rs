@@ -5,11 +5,17 @@
 
 use core::mem::size_of;
 
+use spin::RwLock;
+
+pub trait GetID {
+    fn get_id(&self) -> usize;
+}
+
 #[repr(align(4096))]
 #[repr(C)]
-pub struct MsgQueue<T, const N: usize>
+pub struct MsgQueueInner<T, const N: usize>
 where
-    T: Sized + Default + Copy,
+    T: Sized + Default + Copy + GetID,
 {
     head: usize,
     tail: usize,
@@ -18,9 +24,11 @@ where
     magic: usize,
 }
 
-impl<T, const N: usize> Default for MsgQueue<T, N>
+pub type MsgQueue<T, const N: usize> = RwLock<MsgQueueInner<T, N>>;
+
+impl<T, const N: usize> Default for MsgQueueInner<T, N>
 where
-    T: Sized + Default + Copy,
+    T: Sized + Default + Copy + GetID,
 {
     fn default() -> Self {
         if size_of::<MsgQueue<T, N>>() > 4096 {
@@ -36,9 +44,9 @@ where
     }
 }
 
-impl<T, const N: usize> MsgQueue<T, N>
+impl<T, const N: usize> MsgQueueInner<T, N>
 where
-    T: Sized + Default + Copy,
+    T: Sized + Default + Copy + GetID,
 {
     /// # Safety
     /// The caller must ensure that the pointer is valid and properly aligned.
@@ -63,11 +71,22 @@ where
         true
     }
 
-    pub fn pop(&mut self) -> Option<T> {
+    pub fn test_id(&self, id: isize) -> bool {
+        if self.size == 0 {
+            return false;
+        }
+        let msg = self.msgs[self.head];
+        id == -1 || id as usize == msg.get_id()
+    }
+
+    pub fn pop_id(&mut self, id: isize) -> Option<T> {
         if self.size == 0 {
             return None;
         }
         let msg = self.msgs[self.head];
+        if id != -1 && id as usize != msg.get_id() {
+            return None;
+        }
         self.head = (self.head + 1) % N;
         self.size -= 1;
         Some(msg)
