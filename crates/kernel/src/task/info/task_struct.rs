@@ -8,7 +8,7 @@ use ksync::UPSafeCell;
 
 use crate::{
     log,
-    mm::{get_kernel_stack, new_user_space_from_token},
+    mm::{get_kernel_stack, fork_user_space},
     task::pid::{alloc_pid, PIDGuard},
 };
 
@@ -47,7 +47,7 @@ impl TaskStruct {
         let mm = MMGuard::from_name(app_name).unwrap();
         let pid_guard = alloc_pid().unwrap();
 
-        let task_struct = Self {
+        Self {
             pid: pid_guard,
             inner: unsafe {
                 UPSafeCell::new(TaskStructInner {
@@ -57,13 +57,12 @@ impl TaskStruct {
                     children: Vec::new(),
                 })
             },
-        };
-        task_struct
+        }
     }
 
     pub fn fork(self: &Arc<TaskStruct>) -> Arc<TaskStruct> {
         let mut parent_inner = self.inner.borrow_mut();
-        let mm = MMGuard::from_token(new_user_space_from_token(parent_inner.mm.0));
+        let mm = MMGuard::from_token(fork_user_space(parent_inner.mm.0));
         let pid_guard = alloc_pid().unwrap();
         log!(
             "[kernel] Fork new task {} from task {}",

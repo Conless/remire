@@ -75,7 +75,7 @@ pub fn new_user_space(elf_data: &[u8]) -> usize {
     token
 }
 
-pub fn new_user_space_from_token(token: usize) -> usize {
+pub fn fork_user_space(token: usize) -> usize {
     let mm = USER_SPACES.borrow_mut().get(&token).unwrap().clone();
     let trap_ctx_ppn = mm.translate(VirtAddr::from(TRAP_CONTEXT).into()).unwrap();
     let trap_ctx: &mut TrapContext = trap_ctx_ppn.get_mut();
