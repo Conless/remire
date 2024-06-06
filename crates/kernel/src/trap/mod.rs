@@ -69,7 +69,7 @@ pub fn trap_handler() -> ! {
             suspend_current_and_run_next();
         }
         Trap::Exception(Exception::UserEnvCall) => {
-            // log!("[kernel] receive syscall {:?}.", current_trap_ctx().regs[17]);
+            log!("[kernel] receive syscall {:?}.", current_trap_ctx().regs[17]);
             let mut ctx = current_trap_ctx();
             ctx.pc += 4;
             let result =

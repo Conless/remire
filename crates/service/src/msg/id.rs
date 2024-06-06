@@ -18,3 +18,7 @@ pub fn init_msg_id_allocator(start_id: usize, end_id: usize) {
 pub fn alloc_msg_id() -> Option<usize> {
     MSG_ID_ALLOCATOR.lock().alloc()
 }
+
+pub fn dealloc_msg_id(id: usize) {
+    MSG_ID_ALLOCATOR.lock().dealloc(id)
+}

@@ -7,16 +7,18 @@ use ksync::task::PM2Kernel;
 
 use crate::msg::{id::alloc_msg_id, send_msg};
 
-pub struct MMGuard(usize);
+pub struct MMGuard(pub usize);
 
 impl MMGuard {
     pub fn from_token(token: usize) -> Self {
+        log!("MMGuard from token: {:x}", token);
         MMGuard(token)
     }
 }
 
 impl Drop for MMGuard {
     fn drop(&mut self) {
+        log!("[kernel] Drop MMGuard: {:x}", self.0);
         send_msg(PM2Kernel::Remove { id: alloc_msg_id().unwrap(), token: self.0 })
     }
 }

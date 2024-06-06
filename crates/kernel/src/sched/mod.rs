@@ -3,6 +3,8 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
+use core::arch::asm;
+
 use alloc::{collections::VecDeque, sync::Arc};
 use ksync::UPSafeCell;
 use lazy_static::lazy_static;
@@ -56,11 +58,31 @@ pub fn start_schedule() -> ! {
         if let Some(thread) = pop_thread() {
             let scheduler = processor.scheduler();
             let mut next_thread = thread.borrow_mut();
+            let next_thread_pid = next_thread.pid;
             let next_thread_ptr = &mut *next_thread as *mut ThreadInfo;
+            let mut current_sp: usize;
+            unsafe {
+                asm!("mv {}, sp", out(reg) current_sp);
+            }
+            log!(
+                "[kernel] Switch to task {}:{:x} with sp {:x} ...",
+                next_thread_pid,
+                next_thread.sp,
+                current_sp,
+            );
+            unsafe {
+                asm!("lw {}, 0x0({})", out(reg) current_sp, in(reg) next_thread.sp - 4);
+            }
+            log!(
+                "[kernel] Switch to task {} with data {:x} ...",
+                next_thread_pid,
+                current_sp,
+            );
             drop(next_thread);
 
             processor.set_current(thread);
             drop(processor);
+            // log!("Here");
             unsafe {
                 __switch(scheduler, next_thread_ptr);
             }
@@ -98,6 +120,7 @@ pub fn exit_current_and_run_next(exit_code: i32) {
         }
     }
     
+    log!("[kernel] Calling task_struct->exit...");
     exit(pid, exit_code);
 
     let mut empty_ctx = ThreadInfo::default();

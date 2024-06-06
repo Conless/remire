@@ -8,6 +8,7 @@ use crate::{msg::GetID, MsgQueue};
 #[derive(Clone, Copy)]
 pub enum PM2Kernel {
     ForkReply { id: usize, pid: usize, child_pid: usize },
+    Recycle { id: usize, token: usize },
     Remove { id: usize, token: usize },
     Invalid,
 }
@@ -22,6 +23,7 @@ impl GetID for PM2Kernel {
     fn get_id(&self) -> usize {
         match self {
             PM2Kernel::ForkReply { id, .. } => *id,
+            PM2Kernel::Recycle { id, .. } => *id,
             PM2Kernel::Remove { id, .. } => *id,
             PM2Kernel::Invalid => panic!("Invalid message"),
         }

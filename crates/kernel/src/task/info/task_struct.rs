@@ -94,3 +94,10 @@ impl TaskStruct {
         }
     }
 }
+
+impl Drop for TaskStruct {
+    fn drop(&mut self) {
+        log!("[kernel] Drop task {}", self.pid.0);
+    }
+}
+

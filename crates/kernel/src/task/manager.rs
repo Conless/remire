@@ -11,8 +11,6 @@ use lazy_static::lazy_static;
 
 use ksync::UPSafeCell;
 
-use crate::mm::remove_user_space;
-
 use super::info::task_struct::{TaskStatus, TaskStruct};
 
 /// Inner data structure of the task manager
@@ -100,7 +98,6 @@ impl TaskManager {
 
         task_inner.children.clear();
         self.tasks.remove(&pid);
-        remove_user_space(task_inner.mm.0);
         drop(task_inner);
         drop(task);
     }

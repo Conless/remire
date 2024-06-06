@@ -12,7 +12,7 @@ use crate::{mm::get_kernel_stack, trap::trap_return};
 #[derive(Clone, Copy, Default)]
 pub struct ThreadInfo {
     ra: usize,
-    sp: usize,
+    pub sp: usize,
     s: [usize; 12],
     pub pid: usize,
     pub token: usize,

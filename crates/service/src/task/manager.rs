@@ -9,7 +9,9 @@ use alloc::{
 };
 use lazy_static::lazy_static;
 
-use ksync::UPSafeCell;
+use ksync::{task::PM2Kernel, UPSafeCell};
+
+use crate::msg::{id::alloc_msg_id, send_msg};
 
 use super::info::task_struct::{TaskStatus, TaskStruct};
 
@@ -96,6 +98,7 @@ impl TaskManager {
 
         task_inner.children.clear();
         self.tasks.remove(&pid);
+        send_msg(PM2Kernel::Recycle { id: alloc_msg_id().unwrap(), token: task_inner.mm.0 });
         drop(task_inner);
         drop(task);
     }

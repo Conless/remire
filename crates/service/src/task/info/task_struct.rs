@@ -45,7 +45,7 @@ impl TaskStruct {
         let mm = MMGuard::from_token(token);
         let pid_guard = alloc_pid().unwrap();
 
-        let task_struct = Self {
+        Self {
             pid: pid_guard,
             inner: unsafe {
                 UPSafeCell::new(TaskStructInner {
@@ -55,8 +55,7 @@ impl TaskStruct {
                     children: Vec::new(),
                 })
             },
-        };
-        task_struct
+        }
     }
 
     pub fn fork(self: &Arc<TaskStruct>, new_token: usize) -> Arc<TaskStruct> {
@@ -86,5 +85,11 @@ impl TaskStruct {
 
     pub fn exec(&self, new_token: usize) {
         self.inner.borrow_mut().mm = MMGuard::from_token(new_token);
+    }
+}
+
+impl Drop for TaskStruct {
+    fn drop(&mut self) {
+        log!("[kernel] Drop task {}", self.pid.0);
     }
 }
