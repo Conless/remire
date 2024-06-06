@@ -16,7 +16,7 @@ use mm::{activate_kernel_space, init_frame_allocator};
 use alloc::boxed::Box;
 use drivers::init_device;
 use allocator::init_heap_allocator;
-use sched::add_process;
+use sched::scheduler::add_process;
 use task::init_task_manager;
 
 mod allocator;
@@ -54,7 +54,7 @@ fn rust_main() -> ! {
     loader::list_apps();
     trap::enable_timer_interrupt();
     add_init_process();
-    sched::start_schedule()
+    sched::scheduler::start_schedule()
 }
 
 /// This function is made only to make `cargo test` and analyzer happy

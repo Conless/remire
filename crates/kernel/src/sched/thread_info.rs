@@ -3,16 +3,16 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use crate::{mm::get_kernel_stack, trap::trap_return};
+use crate::{log, mm::get_kernel_stack, trap::trap_return};
 
 /// Task Context
 ///
 /// This struct is used to store the context of a task, containing the return address of the task, the stack pointer of the task, and the callee-saved registers.
 #[repr(C)]
-#[derive(Clone, Copy, Default)]
+#[derive(Clone, Default)]
 pub struct ThreadInfo {
     ra: usize,
-    pub sp: usize,
+    sp: usize,
     s: [usize; 12],
     pub pid: usize,
     pub token: usize,
@@ -28,5 +28,14 @@ impl ThreadInfo {
             token,
         }
     }
+    
+    pub fn get_sp(&self) -> usize {
+        self.sp
+    }
 }
 
+impl Drop for ThreadInfo {
+    fn drop(&mut self) {
+        log!("[kernel] Drop thread info: pid={}, token={:x}", self.pid, self.token);
+    }
+}

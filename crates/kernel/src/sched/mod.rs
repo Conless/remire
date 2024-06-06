@@ -3,92 +3,17 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use core::arch::asm;
-
-use alloc::{collections::VecDeque, sync::Arc};
-use ksync::UPSafeCell;
-use lazy_static::lazy_static;
-use proc::{current_pid, schedule, take_current_task, Processor, PROCESSOR};
-use spin::Mutex;
-use switch::__switch;
+use alloc::sync::Arc;
+use proc::{schedule, take_current_task};
+use scheduler::{add_thread, remove_process};
 use thread_info::ThreadInfo;
 
 use crate::{log, sbi::shutdown, task::exit};
 
 pub mod proc;
+pub mod scheduler;
 mod switch;
 mod thread_info;
-
-lazy_static! {
-    pub static ref SCHEDULER: UPSafeCell<Scheduler> =
-        unsafe { UPSafeCell::new(Scheduler::default()) };
-}
-
-#[derive(Default)]
-pub struct Scheduler {
-    threads: VecDeque<Arc<UPSafeCell<ThreadInfo>>>,
-}
-
-impl Scheduler {
-    pub fn add(&mut self, thread: Arc<UPSafeCell<ThreadInfo>>) {
-        self.threads.push_back(thread);
-    }
-
-    pub fn pop(&mut self) -> Option<Arc<UPSafeCell<ThreadInfo>>> {
-        self.threads.pop_front()
-    }
-}
-
-pub fn add_process(pid: usize, token: usize) {
-    let thread = Arc::new(unsafe { UPSafeCell::new(ThreadInfo::new(pid, token)) });
-    SCHEDULER.borrow_mut().add(thread);
-}
-
-fn add_thread(thread: Arc<UPSafeCell<ThreadInfo>>) {
-    SCHEDULER.borrow_mut().add(thread);
-}
-
-fn pop_thread() -> Option<Arc<UPSafeCell<ThreadInfo>>> {
-    SCHEDULER.borrow_mut().pop()
-}
-
-pub fn start_schedule() -> ! {
-    loop {
-        let mut processor = PROCESSOR.borrow_mut();
-        if let Some(thread) = pop_thread() {
-            let scheduler = processor.scheduler();
-            let mut next_thread = thread.borrow_mut();
-            let next_thread_pid = next_thread.pid;
-            let next_thread_ptr = &mut *next_thread as *mut ThreadInfo;
-            let mut current_sp: usize;
-            unsafe {
-                asm!("mv {}, sp", out(reg) current_sp);
-            }
-            log!(
-                "[kernel] Switch to task {}:{:x} with sp {:x} ...",
-                next_thread_pid,
-                next_thread.sp,
-                current_sp,
-            );
-            unsafe {
-                asm!("lw {}, 0x0({})", out(reg) current_sp, in(reg) next_thread.sp - 4);
-            }
-            log!(
-                "[kernel] Switch to task {} with data {:x} ...",
-                next_thread_pid,
-                current_sp,
-            );
-            drop(next_thread);
-
-            processor.set_current(thread);
-            drop(processor);
-            // log!("Here");
-            unsafe {
-                __switch(scheduler, next_thread_ptr);
-            }
-        }
-    }
-}
 
 pub fn suspend_current_and_run_next() {
     let thread = take_current_task().unwrap();
@@ -101,7 +26,8 @@ pub fn suspend_current_and_run_next() {
 }
 
 pub fn exit_current_and_run_next(exit_code: i32) {
-    let pid = current_pid();
+    let thread = take_current_task().unwrap();
+    let pid = thread.borrow_mut().pid;
     log!(
         "[kernel] Task {} exit with exit_code {} ...",
         pid,
@@ -120,6 +46,8 @@ pub fn exit_current_and_run_next(exit_code: i32) {
         }
     }
     
+    remove_process(pid);
+    assert!(Arc::strong_count(&thread) == 1);
     log!("[kernel] Calling task_struct->exit...");
     exit(pid, exit_code);
 

@@ -5,7 +5,8 @@ use ksync::UPSafeCell;
 
 use crate::mm::get_trap_ctx;
 use crate::sched::proc::{current_pid, current_user_token, set_user_token};
-use crate::sched::{add_process, exit_current_and_run_next, suspend_current_and_run_next};
+use crate::sched::scheduler::add_process;
+use crate::sched::{exit_current_and_run_next, suspend_current_and_run_next};
 use crate::task::{exec, fork, waitpid};
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
