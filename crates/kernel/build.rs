@@ -4,7 +4,7 @@
 // LICENSE file in the root directory of this source tree
 
 use std::{
-    collections::BTreeMap, fs::{self, File}, path::{Path, PathBuf}, process::Command
+    collections::BTreeMap, fs::{self, File}, path::{Path, PathBuf}
 };
 use std::io::Write;
 
@@ -38,33 +38,35 @@ _num_{0}:
         )?;
         
         for i in 0..category.apps.len() {
-            writeln!(f, r#"    .quad app_{}_start"#, i)?;
+            writeln!(f, r#"    .quad {}_{}_start"#, category.name, i)?;
         }
-        writeln!(f, r#"    .quad app_{}_end"#, category.apps.len() - 1)?;
+        writeln!(f, r#"    .quad {}_{}_end"#, category.name, category.apps.len() - 1)?;
 
         writeln!(
             f,
             r#"
-    .global _app_names
-_app_names:"#,
+    .global _{0}_names
+_{0}_names:"#,
+            category.name
         )?;
         for (app_name, _) in category.apps.iter() {
             writeln!(f, r#"    .string "{}""#, app_name)?;
         }
         for (idx, (app_name, bin)) in category.apps.iter().enumerate() {
-            println!("app_{}: {}", idx, app_name);
+            println!("{}_{}: {}", category.name, idx, app_name);
             writeln!(
                 f,
                 r#"
     .section .data
-    .global app_{0}_start
-    .global app_{0}_end
+    .global {2}_{0}_start
+    .global {2}_{0}_end
     .align 3
-app_{0}_start:
+{2}_{0}_start:
     .incbin "{1}"
-app_{0}_end:"#,
+{2}_{0}_end:"#,
                 idx,
-                bin.to_str().unwrap()
+                bin.to_str().unwrap(),
+                category.name
             )?;
         }
     }
@@ -72,7 +74,7 @@ app_{0}_end:"#,
 }
 
 
-const APPS_CATEGORIES: [&str; 1] = ["app"];
+const APPS_CATEGORIES: [&str; 2] = ["app", "service"];
 
 fn main() {
     println!("cargo:rustc-link-arg=-Tcrates/kernel/src/linker.ld");

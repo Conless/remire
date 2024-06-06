@@ -5,8 +5,6 @@ members = [
 exclude = [
   "bios",
   "xtask",
-  "crates/service",
-  "crates/ksync"
 ]
 
 resolver = "2"
