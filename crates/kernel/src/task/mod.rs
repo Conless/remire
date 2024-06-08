@@ -11,12 +11,12 @@ mod info;
 mod manager;
 mod pid;
 
-pub fn fork(pid: usize) -> (usize, usize) {
-    TASK_MANAGER.borrow_mut().fork(pid)
+pub fn fork(pid: usize, token: usize) -> usize {
+    TASK_MANAGER.borrow_mut().fork(pid, token)
 }
 
-pub fn exec(pid: usize, path: &str) -> (isize, usize) {
-    TASK_MANAGER.borrow_mut().exec(pid, path)
+pub fn exec(pid: usize, token: usize) {
+    TASK_MANAGER.borrow_mut().exec(pid, token)
 }
 
 pub fn waitpid(pid: usize, child_pid: isize) -> (isize, i32) {

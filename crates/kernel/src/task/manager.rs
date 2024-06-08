@@ -36,19 +36,17 @@ impl TaskManager {
         self.tasks.remove(&pid);
     }
 
-    pub fn fork(&mut self, pid: usize) -> (usize, usize) {
+    pub fn fork(&mut self, pid: usize, new_token: usize) -> usize {
         let task = self.tasks.get(&pid).unwrap().clone();
-        let new_task = task.fork();
-        let (pid, token) = (new_task.pid.0, new_task.inner.borrow_mut().mm.0);
+        let new_task = task.fork(new_token);
+        let pid = new_task.pid.0;
         self.add(new_task.clone());
-        (pid, token)
+        pid
     }
 
-    pub fn exec(&mut self, pid: usize, app_name: &str) -> (isize, usize) {
+    pub fn exec(&mut self, pid: usize, new_token: usize) {
         let task = self.tasks.get(&pid).unwrap().clone();
-        let ret = task.exec(app_name);
-        let token = task.inner.borrow_mut().mm.0;
-        (ret, token)
+        task.exec(new_token)
     }
 
     pub fn waitpid(&mut self, pid: usize, child_pid: isize) -> (isize, i32) {

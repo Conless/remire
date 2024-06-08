@@ -3,7 +3,8 @@
 use alloc::sync::Arc;
 use ksync::UPSafeCell;
 
-use crate::mm::get_trap_ctx;
+use crate::loader::get_app_data_by_name;
+use crate::mm::{fork_user_space, get_trap_ctx, new_user_space};
 use crate::sched::proc::{current_pid, current_user_token, set_user_token};
 use crate::sched::scheduler::add_process;
 use crate::sched::{exit_current_and_run_next, suspend_current_and_run_next};
@@ -41,11 +42,11 @@ pub fn sys_getpid() -> isize {
 }
 
 pub fn sys_fork() -> isize {
-    let (new_task_pid, new_task_token) = fork(current_pid());
-    let new_task_trap_ctx = get_trap_ctx(new_task_token);
+    let new_token = fork_user_space(current_user_token());
+    let new_task_pid = fork(current_pid(), new_token);
+    let new_task_trap_ctx = get_trap_ctx(new_token);
     new_task_trap_ctx.regs[10] = 0; // fork return 0 in child process
-    
-    add_process(new_task_pid, new_task_token);
+    add_process(new_task_pid, new_token);
     new_task_pid as isize
 }
 
@@ -53,9 +54,14 @@ pub fn sys_exec(path: *const u8) -> isize {
     let current_pid = current_pid();
     let current_token = current_user_token();
     let path = translated_str(current_token, path);
-    let (result, token) = exec(current_pid, path.as_str());
-    set_user_token(token);
-    result
+    if let Some(app_data) = get_app_data_by_name(path.as_str()) {
+        let new_token = new_user_space(app_data);
+        exec(current_pid, current_token);
+        set_user_token(new_token);
+        0
+    } else {
+        -1
+    }
 }
 
 pub fn sys_waitpid(pid: isize, exit_code_ptr: *mut i32) -> isize {

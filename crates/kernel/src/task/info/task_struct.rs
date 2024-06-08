@@ -60,9 +60,9 @@ impl TaskStruct {
         }
     }
 
-    pub fn fork(self: &Arc<TaskStruct>) -> Arc<TaskStruct> {
+    pub fn fork(self: &Arc<TaskStruct>, new_token: usize) -> Arc<TaskStruct> {
         let mut parent_inner = self.inner.borrow_mut();
-        let mm = MMGuard::from_token(fork_user_space(parent_inner.mm.0));
+        let mm = MMGuard::from_token(new_token);
         let pid_guard = alloc_pid().unwrap();
         log!(
             "[kernel] Fork new task {} from task {}",
@@ -85,13 +85,8 @@ impl TaskStruct {
         task_struct
     }
 
-    pub fn exec(&self, app_name: &str) -> isize {
-        if let Some(mm) = MMGuard::from_name(app_name) {
-            self.inner.borrow_mut().mm = mm;
-            0
-        } else {
-            -1
-        }
+    pub fn exec(&self, new_token: usize) {
+        self.inner.borrow_mut().mm = MMGuard::from_token(new_token);
     }
 }
 
