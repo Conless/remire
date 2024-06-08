@@ -7,8 +7,6 @@
 
 mod cell;
 pub mod msg;
-pub mod task;
 
 pub use cell::UPSafeCell;
-pub use msg::MsgQueue;
 

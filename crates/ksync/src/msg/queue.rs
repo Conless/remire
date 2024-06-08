@@ -7,19 +7,21 @@ use core::mem::size_of;
 
 use spin::RwLock;
 
-pub trait GetID {
-    fn get_id(&self) -> usize;
+#[derive(Clone, Copy, Default)]
+pub struct MsgWrapper<T> {
+    pub msg: T,
+    pub id: isize,
 }
 
 #[repr(align(4096))]
 #[repr(C)]
 pub struct MsgQueueInner<T, const N: usize>
 where
-    T: Sized + Default + Copy + GetID,
+    T: Sized + Default + Copy,
 {
     head: usize,
     tail: usize,
-    msgs: [T; N],
+    msgs: [MsgWrapper<T>; N],
     size: usize,
     magic: usize,
 }
@@ -28,7 +30,7 @@ pub type MsgQueue<T, const N: usize> = RwLock<MsgQueueInner<T, N>>;
 
 impl<T, const N: usize> Default for MsgQueueInner<T, N>
 where
-    T: Sized + Default + Copy + GetID,
+    T: Sized + Default + Copy,
 {
     fn default() -> Self {
         if size_of::<MsgQueue<T, N>>() > 4096 {
@@ -37,7 +39,7 @@ where
         Self {
             head: 0,
             tail: 0,
-            msgs: [T::default(); N],
+            msgs: [MsgWrapper::default(); N],
             size: 0,
             magic: 0xac05e, // Represents "acore"
         }
@@ -46,7 +48,7 @@ where
 
 impl<T, const N: usize> MsgQueueInner<T, N>
 where
-    T: Sized + Default + Copy + GetID,
+    T: Sized + Default + Copy,
 {
     /// # Safety
     /// The caller must ensure that the pointer is valid and properly aligned.
@@ -61,7 +63,7 @@ where
         result
     }
 
-    pub fn push(&mut self, msg: T) -> bool {
+    pub fn push(&mut self, msg: MsgWrapper<T>) -> bool {
         if self.size == N {
             return false;
         }
@@ -76,15 +78,15 @@ where
             return false;
         }
         let msg = self.msgs[self.head];
-        id == -1 || id as usize == msg.get_id()
+        id == 0 || id == msg.id
     }
 
-    pub fn pop_id(&mut self, id: isize) -> Option<T> {
+    pub fn pop_id(&mut self, id: isize) -> Option<MsgWrapper<T>> {
         if self.size == 0 {
             return None;
         }
         let msg = self.msgs[self.head];
-        if id != -1 && id as usize != msg.get_id() {
+        if id != 0 && id != msg.id {
             return None;
         }
         self.head = (self.head + 1) % N;
