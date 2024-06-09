@@ -7,8 +7,8 @@ mod frame;
 mod mm_struct;
 mod page;
 mod page_table;
-mod vm_area;
 mod translation;
+mod vm_area;
 
 use alloc::{collections::BTreeMap, string::String, sync::Arc, vec::Vec};
 use lazy_static::lazy_static;
@@ -21,10 +21,14 @@ use ksync::UPSafeCell;
 
 pub use frame::init_frame_allocator;
 pub use page::VirtAddr;
-pub use vm_area::MapPermission;
 pub use translation::*;
+pub use vm_area::MapPermission;
+use vm_area::{MapType, VMArea};
 
-use crate::{config::TRAP_CONTEXT, trap::{trap_handler, TrapContext}};
+use crate::{
+    config::{PAGE_SIZE, SERVICE_RECV_PORT, SERVICE_SEND_PORT, TRAP_CONTEXT},
+    trap::{trap_handler, TrapContext},
+};
 
 pub mod types {
     pub use super::frame::{PhysAddr, PhysPageNum};
@@ -34,7 +38,7 @@ lazy_static! {
   /// a memory set instance through lazy_static! managing kernel space
   pub static ref KERNEL_SPACE: Arc<UPSafeCell<MMStruct>> =
       Arc::new(unsafe { UPSafeCell::new(MMStruct::new_kernel()) });
-  pub static ref USER_SPACES: UPSafeCell<BTreeMap<usize, MMStruct>> = 
+  pub static ref USER_SPACES: UPSafeCell<BTreeMap<usize, MMStruct>> =
       unsafe { UPSafeCell::new(BTreeMap::new()) };
 }
 
@@ -75,6 +79,24 @@ pub fn new_user_space(elf_data: &[u8]) -> usize {
     token
 }
 
+pub fn new_service(elf_data: &[u8]) -> (usize, usize, usize) {
+    let (mut mm, user_sp, entry_point) = MMStruct::new_app(elf_data);
+    let service_send_port = mm.alloc_port(SERVICE_SEND_PORT);
+    let service_recv_port = mm.alloc_port(SERVICE_RECV_PORT);
+    let trap_ctx_ppn = mm.translate(VirtAddr::from(TRAP_CONTEXT).into()).unwrap();
+    let trap_ctx: &mut TrapContext = trap_ctx_ppn.get_mut();
+    *trap_ctx = TrapContext::app_init_context(
+        entry_point,
+        user_sp,
+        KERNEL_SPACE.borrow_mut().token(),
+        mm.kernel_stack_top(),
+        trap_handler as usize,
+    );
+    let token = mm.token();
+    USER_SPACES.borrow_mut().insert(token, mm);
+    (token, service_send_port, service_recv_port)
+}
+
 pub fn fork_user_space(token: usize) -> usize {
     let mm = USER_SPACES.borrow_mut().get(&token).unwrap().clone();
     let trap_ctx_ppn = mm.translate(VirtAddr::from(TRAP_CONTEXT).into()).unwrap();
@@ -83,7 +105,7 @@ pub fn fork_user_space(token: usize) -> usize {
     let token = mm.token();
     USER_SPACES.borrow_mut().insert(token, mm);
     token
-} 
+}
 
 pub fn remove_user_space(token: usize) {
     USER_SPACES.borrow_mut().remove(&token);

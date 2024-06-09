@@ -27,7 +27,7 @@ pub struct MMStruct {
     page_table: PageTable,
     areas: Vec<VMArea>,
     brk: usize,
-    kernel_stack: KernelStack,
+    kernel_stack: Option<KernelStack>,
     heap_bottom: usize,
 }
 
@@ -50,7 +50,7 @@ impl MMStruct {
     }
 
     pub fn kernel_stack_top(&self) -> usize {
-        self.kernel_stack.get_top()
+        self.kernel_stack.as_ref().unwrap().get_top()
     }
     
     pub fn recycle(&mut self) {
@@ -201,7 +201,7 @@ impl MMStruct {
         mm.map_trampoline();
         
         // map kernel stack
-        mm.kernel_stack.init();
+        mm.kernel_stack = Some(KernelStack::new_process());
         
         // map app sections
         let elf_data = xmas_elf::ElfFile::new(app_data).unwrap();
@@ -302,6 +302,17 @@ impl MMStruct {
             elf_data.header.pt2.entry_point() as usize,
         )
     }
+    
+    pub fn alloc_port(&mut self, va: usize) -> usize {
+        let port_area = VMArea::new(
+            va.into(),
+            (va + PAGE_SIZE).into(),
+            MapType::Framed,
+            MapPermission::R | MapPermission::W | MapPermission::U,
+        );
+        self.push(port_area, None);
+        self.translate(va.into()).unwrap().into()
+    }
 
     pub fn translate(&self, vpn: VirtPageNum) -> Option<PhysPageNum> {
         self.page_table.translate(vpn).map(|pte| pte.ppn())
@@ -377,7 +388,7 @@ impl Clone for MMStruct {
     fn clone(&self) -> Self {
         let mut new_mm = Self::default();
         new_mm.map_trampoline();
-        new_mm.kernel_stack.init();
+        new_mm.kernel_stack = Some(KernelStack::new_process());
         for area in &self.areas {
             // We cannot do deep copy here, since the page table is different
             new_mm.push(area.clone(), None);
