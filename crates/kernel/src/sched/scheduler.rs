@@ -21,26 +21,20 @@ lazy_static! {
 #[derive(Default)]
 pub struct Scheduler {
     threads: VecDeque<Arc<UPSafeCell<ThreadInfo>>>,
-    processes: BTreeMap<usize, Arc<UPSafeCell<ThreadInfo>>>,
     services: BTreeMap<String, Arc<UPSafeCell<ThreadInfo>>>,
 }
 
 impl Scheduler {
     fn add_process(&mut self, thread: Arc<UPSafeCell<ThreadInfo>>) {
         self.threads.push_back(thread.clone());
-        self.processes.insert(thread.borrow_mut().pid, thread.clone());
-    }
-    
-    fn remove_process(&mut self, pid: usize) {
-        self.processes.remove(&pid);
     }
     
     fn add_service(&mut self, service_name: &str, thread: Arc<UPSafeCell<ThreadInfo>>) {
-        self.threads.push_back(thread.clone());
         self.services.insert(service_name.to_string(), thread.clone());
     }
     
     pub fn add_thread(&mut self, thread: Arc<UPSafeCell<ThreadInfo>>) {
+        assert!(thread.borrow_mut().pid != 0, "Add a thread with pid 0");
         self.threads.push_back(thread);
     }
 
@@ -54,8 +48,9 @@ pub fn add_process(pid: usize, token: usize) {
     SCHEDULER.borrow_mut().add_process(thread);
 }
 
-pub fn remove_process(pid: usize) {
-    SCHEDULER.borrow_mut().remove_process(pid);
+pub fn add_service(service_name: &str, token: usize) {
+    let thread = Arc::new(unsafe { UPSafeCell::new(ThreadInfo::new(0, token)) });
+    SCHEDULER.borrow_mut().add_service(service_name, thread);
 }
 
 pub fn add_thread(thread: Arc<UPSafeCell<ThreadInfo>>) {

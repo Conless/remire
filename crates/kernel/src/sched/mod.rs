@@ -5,7 +5,7 @@
 
 use alloc::sync::Arc;
 use proc::{schedule, take_current_task};
-use scheduler::{add_thread, remove_process};
+use scheduler::add_thread;
 use thread_info::ThreadInfo;
 
 use crate::{log, sbi::shutdown, task::exit};
@@ -46,7 +46,6 @@ pub fn exit_current_and_run_next(exit_code: i32) {
         }
     }
     
-    remove_process(pid);
     assert!(Arc::strong_count(&thread) == 1);
     log!("[kernel] Calling task_struct->exit...");
     exit(pid, exit_code);
