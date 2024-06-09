@@ -4,14 +4,14 @@
 // LICENSE file in the root directory of this source tree.
 
 use alloc::{
-    collections::{BTreeMap, VecDeque},
+    collections::BTreeMap,
     sync::Arc,
 };
 use lazy_static::lazy_static;
 
-use ksync::{task::PM2Kernel, UPSafeCell};
+use ksync::{msg::task::PM2Kernel, UPSafeCell};
 
-use crate::msg::{id::alloc_msg_id, send_msg};
+use crate::msg::send_msg;
 
 use super::info::task_struct::{TaskStatus, TaskStruct};
 
@@ -98,7 +98,7 @@ impl TaskManager {
 
         task_inner.children.clear();
         self.tasks.remove(&pid);
-        send_msg(PM2Kernel::Recycle { id: alloc_msg_id().unwrap(), token: task_inner.mm.0 });
+        send_msg(PM2Kernel::Recycle { token: task_inner.mm.0 });
         drop(task_inner);
         drop(task);
     }

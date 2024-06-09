@@ -20,7 +20,6 @@ pub mod task;
 pub mod msg;
 
 use allocator::init_heap;
-use msg::init_msg_handler;
 use syscall::*;
 
 
@@ -31,9 +30,8 @@ pub fn handle_alloc_error(layout: core::alloc::Layout) -> ! {
 
 #[no_mangle]
 #[link_section = ".text.entry"]
-pub extern "C" fn _start(send_va: usize, recv_va: usize, start_id: usize, end_id: usize) -> ! {
+pub extern "C" fn _start() -> ! {
     init_heap();
-    init_msg_handler(send_va, recv_va, start_id, end_id);
     exit(main());
 }
 

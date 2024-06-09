@@ -3,9 +3,9 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use ksync::task::PM2Kernel;
+use ksync::msg::task::PM2Kernel;
 
-use crate::msg::{id::alloc_msg_id, send_msg};
+use crate::msg::{send_msg};
 
 pub struct MMGuard(pub usize);
 
@@ -19,6 +19,6 @@ impl MMGuard {
 impl Drop for MMGuard {
     fn drop(&mut self) {
         log!("[kernel] Drop MMGuard: {:x}", self.0);
-        send_msg(PM2Kernel::Remove { id: alloc_msg_id().unwrap(), token: self.0 })
+        send_msg(PM2Kernel::Remove { token: self.0 })
     }
 }
