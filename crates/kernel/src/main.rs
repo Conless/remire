@@ -29,6 +29,7 @@ mod trap;
 mod stack;
 mod syscall;
 mod task;
+mod services;
 mod mm;
 mod sched;
 

@@ -12,7 +12,7 @@ use crate::mm::KERNEL_SPACE;
 use crate::log;
 use crate::config::*;
 
-#[derive(Default, Debug)]
+#[derive(Debug)]
 pub struct KernelStack {
     top: usize,
     bottom: usize,
@@ -20,7 +20,7 @@ pub struct KernelStack {
 
 lazy_static! {
     static ref KERNEL_STACK_ALLOCATOR: UPSafeCell<StackAllocator> = unsafe {
-        UPSafeCell::new(StackAllocator::new(0, KERNEL_HEAP_SIZE))
+        UPSafeCell::new(StackAllocator::new(0, KERNEL_STACK_NUM))
     };
 }
 
@@ -31,20 +31,18 @@ fn get_kernel_stack_addr(id: usize) -> (usize, usize) {
 }
 
 impl KernelStack {
-    pub fn init(&mut self) {
-        if self.top != 0 {
-            log!("[kernel] kernel stack is being forked.")
-        }
+    pub fn new_process() -> Self {
         let id = KERNEL_STACK_ALLOCATOR.borrow_mut().alloc().unwrap();
-        (self.top, self.bottom) = get_kernel_stack_addr(id);
-        log!("[kernel] mapping kernel stack [{:#x}, {:#x})", self.bottom, self.top);
+        let (top, bottom) = get_kernel_stack_addr(id);
+        log!("[kernel] mapping kernel stack [{:#x}, {:#x})", bottom, top);
         KERNEL_SPACE.borrow_mut().insert(
-            self.bottom.into(),
-            self.top.into(),
+            bottom.into(),
+            top.into(),
             MapPermission::R | MapPermission::W,
         );
+        Self { top, bottom }
     }
-
+    
     pub fn get_top(&self) -> usize {
         self.top
     }
@@ -52,6 +50,9 @@ impl KernelStack {
 
 impl Drop for KernelStack {
     fn drop(&mut self) {
+        if self.top == 0 && self.bottom == 0 {
+            return;
+        }
         log!(
             "[kernel] unmapping kernel stack [{:#x}, {:#x})",
             self.bottom, self.top);

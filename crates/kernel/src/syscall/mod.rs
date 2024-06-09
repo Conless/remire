@@ -18,8 +18,8 @@ mod fs;
 mod process;
 mod mem;
 
+pub use process::sys_yield;
 use fs::{sys_read, sys_write};
-
 use self::{mem::sys_sbrk, process::*};
 
 /// Syscall handler
