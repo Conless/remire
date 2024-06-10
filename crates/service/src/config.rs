@@ -10,7 +10,6 @@ pub const TRAP_CONTEXT: usize = TRAMPOLINE - PAGE_SIZE;
 pub const SERVICE_SEND_PORT: usize = TRAMPOLINE - PAGE_SIZE * 3;
 pub const SERVICE_RECV_PORT: usize = TRAMPOLINE - PAGE_SIZE * 5;
 
-
 pub const LOG: bool = false;
 
 pub const MAX_PID: usize = 255;

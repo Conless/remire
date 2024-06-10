@@ -7,4 +7,7 @@ exclude = [
   "xtask",
 ]
 
+[profile.dev]
+debug = true
+
 resolver = "2"
