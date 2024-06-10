@@ -311,7 +311,7 @@ impl MMStruct {
             MapPermission::R | MapPermission::W | MapPermission::U,
         );
         self.push(port_area, None);
-        self.translate(va.into()).unwrap().into()
+        self.translate(VirtAddr::from(va).into()).unwrap().into()
     }
 
     pub fn translate(&self, vpn: VirtPageNum) -> Option<PhysPageNum> {
