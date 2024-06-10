@@ -21,20 +21,14 @@ lazy_static! {
 #[derive(Default)]
 pub struct Scheduler {
     threads: VecDeque<Arc<UPSafeCell<ThreadInfo>>>,
-    services: BTreeMap<String, Arc<UPSafeCell<ThreadInfo>>>,
 }
 
 impl Scheduler {
-    fn add_process(&mut self, thread: Arc<UPSafeCell<ThreadInfo>>) {
+    fn add_thread(&mut self, thread: Arc<UPSafeCell<ThreadInfo>>) {
         self.threads.push_back(thread.clone());
     }
     
-    fn add_service(&mut self, service_name: &str, thread: Arc<UPSafeCell<ThreadInfo>>) {
-        self.services.insert(service_name.to_string(), thread.clone());
-    }
-    
-    pub fn add_thread(&mut self, thread: Arc<UPSafeCell<ThreadInfo>>) {
-        assert!(thread.borrow_mut().pid != 0, "Add a thread with pid 0");
+    pub fn add(&mut self, thread: Arc<UPSafeCell<ThreadInfo>>) {
         self.threads.push_back(thread);
     }
 
@@ -45,16 +39,16 @@ impl Scheduler {
 
 pub fn add_process(pid: usize, token: usize) {
     let thread = Arc::new(unsafe { UPSafeCell::new(ThreadInfo::new(pid, token)) });
-    SCHEDULER.borrow_mut().add_process(thread);
+    SCHEDULER.borrow_mut().add_thread(thread);
 }
 
-pub fn add_service(service_name: &str, token: usize) {
+pub fn add_service(token: usize) {
     let thread = Arc::new(unsafe { UPSafeCell::new(ThreadInfo::new(0, token)) });
-    SCHEDULER.borrow_mut().add_service(service_name, thread);
+    SCHEDULER.borrow_mut().add_thread(thread)
 }
 
 pub fn add_thread(thread: Arc<UPSafeCell<ThreadInfo>>) {
-    SCHEDULER.borrow_mut().add_thread(thread);
+    SCHEDULER.borrow_mut().add(thread);
 }
 
 pub fn pop_thread() -> Option<Arc<UPSafeCell<ThreadInfo>>> {
@@ -82,11 +76,11 @@ pub fn start_schedule() -> ! {
             // unsafe {
                 // asm!("lw {}, 0x0({})", out(reg) current_sp, in(reg) next_thread.sp - 4);
             // }
-            log!(
-                "[kernel] Switch to task {} with data {:x} ...",
-                next_thread_pid,
-                current_sp,
-            );
+            // log!(
+            //     "[kernel] Switch to task {} with data {:x} ...",
+            //     next_thread_pid,
+            //     current_sp,
+            // );
             drop(next_thread);
 
             processor.set_current(thread);

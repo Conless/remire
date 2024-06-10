@@ -54,9 +54,10 @@ pub fn sys_exec(path: *const u8) -> isize {
     let current_pid = current_pid();
     let current_token = current_user_token();
     let path = translated_str(current_token, path);
+    log!("[kernel] Process {} exec {:?}", current_pid, path);
     if let Some(app_data) = get_app_data_by_name(path.as_str()) {
         let new_token = new_user_space(app_data);
-        exec(current_pid, current_token);
+        exec(current_pid, new_token);
         set_user_token(new_token);
         0
     } else {

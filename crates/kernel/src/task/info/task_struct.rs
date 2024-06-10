@@ -65,9 +65,10 @@ impl TaskStruct {
         let mm = MMGuard::from_token(new_token);
         let pid_guard = alloc_pid().unwrap();
         log!(
-            "[kernel] Fork new task {} from task {}",
+            "[kernel] Fork new task {} from task {}, new token = {:x}",
             pid_guard.0,
-            self.pid.0
+            self.pid.0,
+            new_token
         );
         let task_struct = Arc::new(TaskStruct {
             pid: pid_guard,
@@ -86,6 +87,11 @@ impl TaskStruct {
     }
 
     pub fn exec(&self, new_token: usize) {
+        log!(
+            "[kernel] Task {} exec with new token {:x}",
+            self.pid.0,
+            new_token
+        );
         self.inner.borrow_mut().mm = MMGuard::from_token(new_token);
     }
 }

@@ -25,7 +25,7 @@ pub fn init_pm() {
     unsafe {
         MSG_QUEUE.init(send_pa, recv_pa, yield_current_and_run_next);
     }
-    add_service("pm", token);
+    add_service(token);
 }
 
 pub fn fork(pid: usize, token: usize) -> usize {
