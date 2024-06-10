@@ -17,6 +17,7 @@ use alloc::boxed::Box;
 use drivers::init_device;
 use allocator::init_heap_allocator;
 use sched::scheduler::add_process;
+use services::init_services;
 use task::init_task_manager;
 
 mod allocator;
@@ -46,7 +47,8 @@ extern "C" fn rust_init() -> ! {
 
 fn add_init_process() {
     let (pid, token) = init_task_manager();
-    add_process(pid, token)
+    add_process(pid, token);
+    init_services();
 }
 
 fn rust_main() -> ! {

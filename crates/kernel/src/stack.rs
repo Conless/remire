@@ -9,13 +9,13 @@ use lazy_static::lazy_static;
 
 use crate::mm::{MapPermission, VirtAddr};
 use crate::mm::KERNEL_SPACE;
-use crate::log;
+use crate::{log, println};
 use crate::config::*;
 
 #[derive(Debug)]
 pub struct KernelStack {
     top: usize,
-    bottom: usize,
+    id: usize,
 }
 
 lazy_static! {
@@ -33,6 +33,7 @@ fn get_kernel_stack_addr(id: usize) -> (usize, usize) {
 impl KernelStack {
     pub fn new_process() -> Self {
         let id = KERNEL_STACK_ALLOCATOR.borrow_mut().alloc().unwrap();
+        println!("id: {}", id);
         let (top, bottom) = get_kernel_stack_addr(id);
         log!("[kernel] mapping kernel stack [{:#x}, {:#x})", bottom, top);
         KERNEL_SPACE.borrow_mut().insert(
@@ -40,7 +41,7 @@ impl KernelStack {
             top.into(),
             MapPermission::R | MapPermission::W,
         );
-        Self { top, bottom }
+        Self { top, id }
     }
     
     pub fn get_top(&self) -> usize {
@@ -50,13 +51,15 @@ impl KernelStack {
 
 impl Drop for KernelStack {
     fn drop(&mut self) {
-        if self.top == 0 && self.bottom == 0 {
+        if self.top == 0 {
             return;
         }
+        let bottom = self.top - KERNEL_STACK_SIZE;
         log!(
             "[kernel] unmapping kernel stack [{:#x}, {:#x})",
-            self.bottom, self.top);
-        let start_va: VirtAddr = self.bottom.into();
+            bottom, self.top);
+        let start_va: VirtAddr = bottom.into();
         KERNEL_SPACE.borrow_mut().remove(start_va.into());
+        KERNEL_STACK_ALLOCATOR.borrow_mut().dealloc(self.id);
     }
 }

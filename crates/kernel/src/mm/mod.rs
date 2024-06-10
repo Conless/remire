@@ -26,8 +26,7 @@ pub use vm_area::MapPermission;
 use vm_area::{MapType, VMArea};
 
 use crate::{
-    config::{PAGE_SIZE, SERVICE_RECV_PORT, SERVICE_SEND_PORT, TRAP_CONTEXT},
-    trap::{trap_handler, TrapContext},
+    config::{PAGE_SIZE, SERVICE_RECV_PORT, SERVICE_SEND_PORT, TRAP_CONTEXT}, log, trap::{trap_handler, TrapContext}
 };
 
 pub mod types {
@@ -75,6 +74,7 @@ pub fn new_user_space(elf_data: &[u8]) -> usize {
         trap_handler as usize,
     );
     let token = mm.token();
+    log!("[kernel] New user space created: token = {:x}", token);
     USER_SPACES.borrow_mut().insert(token, mm);
     token
 }
@@ -108,7 +108,8 @@ pub fn fork_user_space(token: usize) -> usize {
 }
 
 pub fn remove_user_space(token: usize) {
-    USER_SPACES.borrow_mut().remove(&token);
+    log!("[kernel] Remove user space: token = {:x}", token);
+    USER_SPACES.borrow_mut().remove(&token).unwrap();
 }
 
 pub fn change_program_brk(token: usize, size: i32) -> Option<usize> {
