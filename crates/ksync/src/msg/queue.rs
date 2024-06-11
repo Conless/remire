@@ -13,7 +13,6 @@ pub struct MsgWrapper<T> {
     pub id: isize,
 }
 
-#[repr(align(4096))]
 #[repr(C)]
 pub struct MsgQueueInner<T, const N: usize>
 where
@@ -73,12 +72,11 @@ where
         true
     }
 
-    pub fn test_id(&self, id: isize) -> bool {
+    pub fn peak_id(&self) -> isize {
         if self.size == 0 {
-            return false;
+            return 0;
         }
-        let msg = self.msgs[self.head];
-        id == 0 || id == msg.id
+        self.msgs[self.head].id
     }
 
     pub fn pop_id(&mut self, id: isize) -> Option<MsgWrapper<T>> {

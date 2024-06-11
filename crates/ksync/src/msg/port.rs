@@ -7,7 +7,7 @@ use core::sync::atomic::{AtomicIsize, Ordering};
 
 use super::queue::{MsgQueue, MsgWrapper};
 
-pub struct MsgIOQueue<I, O, const N: usize, const M: bool>
+pub struct MsgPort<I, O, const N: usize, const M: bool>
 where
     I: Copy + Default,
     O: Copy + Default,
@@ -18,8 +18,11 @@ where
     yield_: Option<fn()>,
 }
 
-impl<I, O, const N: usize, const M: bool> MsgIOQueue<I, O, N, M>
-where I: Copy + Default, O: Copy + Default {
+impl<I, O, const N: usize, const M: bool> MsgPort<I, O, N, M>
+where
+    I: Copy + Default,
+    O: Copy + Default,
+{
     pub const fn default() -> Self {
         let send_id = if M { 1 } else { -1 };
         Self {
@@ -29,7 +32,7 @@ where I: Copy + Default, O: Copy + Default {
             yield_: None,
         }
     }
-    
+
     pub const unsafe fn new(send_port: usize, recv_port: usize, yield_: fn()) -> Self {
         Self {
             send_id: AtomicIsize::new(if M { 1 } else { -1 }),
@@ -40,7 +43,7 @@ where I: Copy + Default, O: Copy + Default {
     }
 
     pub unsafe fn init(&mut self, send_port: usize, recv_port: usize, yield_: fn()) {
-        self.send_port = send_port as *mut MsgQueue<O, N>; 
+        self.send_port = send_port as *mut MsgQueue<O, N>;
         self.recv_port = recv_port as *mut MsgQueue<I, N>;
         self.yield_ = Some(yield_);
     }
@@ -63,7 +66,7 @@ where I: Copy + Default, O: Copy + Default {
             }
         }
     }
-    
+
     pub unsafe fn reply(&self, id: isize, msg: O) {
         let msg = MsgWrapper { msg, id };
         loop {
@@ -78,22 +81,39 @@ where I: Copy + Default, O: Copy + Default {
         }
     }
 
-    unsafe fn try_recv(&self, id: isize) -> bool {
+    unsafe fn try_recv(&self, test_func: &dyn Fn(isize) -> bool) -> Option<isize> {
         let recv_port_ptr = &mut *self.recv_port;
         let recv_port = recv_port_ptr.read();
-        recv_port.test_id(id)
+        let peak_id = recv_port.peak_id();
+        if peak_id != 0 && test_func(peak_id) {
+            Some(peak_id)
+        } else {
+            None
+        }
     }
 
-    pub unsafe fn recv(&self, id: isize) -> I {
+    pub unsafe fn spin_recv(&self, id: isize) -> (isize, I) {
         loop {
-            if self.try_recv(id) {
-                break;
+            if let Some(id) = self.try_recv(&|a| a == 0 || a == id) {
+                let recv_port_ptr = &mut *self.recv_port;
+                let mut recv_port = recv_port_ptr.write();
+                let msg = recv_port.pop_id(id).unwrap();
+                return (msg.id, msg.msg);
             } else {
                 self.yield_.unwrap()();
             }
         }
-        let recv_port_ptr = &mut *self.recv_port;
-        let mut recv_port = recv_port_ptr.write();
-        recv_port.pop_id(id).unwrap().msg
+    }
+
+    pub unsafe fn resolve(&self) -> Option<(isize, I)> {
+        let test_func = if M { |a| a < 0 } else { |a| a > 0 };
+        if let Some(id) = self.try_recv(&test_func) {
+            let recv_port_ptr = &mut *self.recv_port;
+            let mut recv_port = recv_port_ptr.write();
+            let msg = recv_port.pop_id(id).unwrap();
+            Some((msg.id, msg.msg))
+        } else {
+            None
+        }
     }
 }
