@@ -8,7 +8,7 @@ use crate::mm::{fork_user_space, get_trap_ctx, new_user_space};
 use crate::sched::proc::{current_pid, current_user_token, set_user_token};
 use crate::sched::scheduler::add_process;
 use crate::sched::{exit_current_and_run_next, suspend_current_and_run_next};
-use crate::task::{exec, fork, waitpid};
+use crate::services::pm::{exec, fork, waitpid};
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 //
@@ -44,6 +44,10 @@ pub fn sys_getpid() -> isize {
 pub fn sys_fork() -> isize {
     let new_token = fork_user_space(current_user_token());
     let new_task_pid = fork(current_pid(), new_token);
+    log!(
+        "[kernel] Process {} finish forking a child process {}",
+        current_pid(),
+        new_task_pid);
     let new_task_trap_ctx = get_trap_ctx(new_token);
     new_task_trap_ctx.regs[10] = 0; // fork return 0 in child process
     add_process(new_task_pid, new_token);

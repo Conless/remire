@@ -12,13 +12,14 @@ use core::arch::{asm, global_asm};
 
 extern crate alloc;
 
-use mm::{activate_kernel_space, init_frame_allocator};
+use loader::get_app_data_by_name;
+use mm::{activate_kernel_space, init_frame_allocator, new_user_space};
 use alloc::boxed::Box;
 use drivers::init_device;
 use allocator::init_heap_allocator;
 use sched::scheduler::add_process;
-use services::init_services;
-use task::init_task_manager;
+use services::{init_services, pm::init};
+// use task::init_task_manager;
 
 mod allocator;
 mod lang;
@@ -29,7 +30,7 @@ mod loader;
 mod trap;
 mod stack;
 mod syscall;
-mod task;
+// mod task;
 mod services;
 mod mm;
 mod sched;
@@ -46,9 +47,10 @@ extern "C" fn rust_init() -> ! {
 }
 
 fn add_init_process() {
-    let (pid, token) = init_task_manager();
-    add_process(pid, token);
     init_services();
+    let init_token = new_user_space(get_app_data_by_name("initproc").unwrap());
+    init(init_token);
+    add_process(1, init_token)
 }
 
 fn rust_main() -> ! {

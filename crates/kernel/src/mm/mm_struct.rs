@@ -304,14 +304,18 @@ impl MMStruct {
     }
     
     pub fn alloc_port(&mut self, va: usize) -> usize {
+        log!(
+            "[kernel] mapping port area [{:#x}, {:#x})",
+            va, va + PAGE_SIZE * 2
+        );
         let port_area = VMArea::new(
             va.into(),
-            (va + PAGE_SIZE).into(),
+            (va + PAGE_SIZE * 2).into(),
             MapType::Framed,
             MapPermission::R | MapPermission::W | MapPermission::U,
         );
         self.push(port_area, None);
-        self.translate(VirtAddr::from(va).into()).unwrap().into()
+        PhysAddr::from(self.translate(VirtAddr::from(va).into()).unwrap()).into()
     }
 
     pub fn translate(&self, vpn: VirtPageNum) -> Option<PhysPageNum> {
