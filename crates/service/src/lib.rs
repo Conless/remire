@@ -13,7 +13,7 @@ extern crate alloc;
 #[macro_use]
 pub mod console;
 mod allocator;
-mod config;
+pub mod config;
 mod lang_items;
 pub mod syscall;
 pub mod task;
