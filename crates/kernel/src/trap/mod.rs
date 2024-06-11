@@ -14,10 +14,10 @@ use riscv::register::utvec::TrapMode;
 use riscv::register::{scause, sie, stval, stvec};
 
 use crate::config::{TRAMPOLINE, TRAP_CONTEXT};
-use crate::{log, println};
-use crate::sched::proc::{current_trap_ctx, current_user_token};
+use crate::sched::proc::{current_pid, current_trap_ctx, current_user_token};
 use crate::sched::{exit_current_and_run_next, suspend_current_and_run_next};
 use crate::syscall::syscall;
+use crate::{log, println};
 use core::arch::{asm, global_asm};
 
 use self::timer::set_next_interrupt;
@@ -52,7 +52,10 @@ pub fn enable_timer_interrupt() {
     unsafe {
         sie::set_stimer();
     }
-    set_next_interrupt();
+}
+
+fn resolve_message() {
+    crate::services::reply_services()
 }
 
 /// Trap handler
@@ -65,15 +68,18 @@ pub fn trap_handler() -> ! {
     let stval = stval::read();
     match scause.cause() {
         Trap::Interrupt(Interrupt::SupervisorTimer) => {
-            set_next_interrupt();
-            suspend_current_and_run_next();
+            if current_pid() != 0 {
+                suspend_current_and_run_next();
+            }
         }
         Trap::Exception(Exception::UserEnvCall) => {
-            log!("[kernel] receive syscall {:?}.", current_trap_ctx().regs[17]);
+            // log!(
+            //     "[kernel] receive syscall {:?}.",
+            //     current_trap_ctx().regs[17]
+            // );
             let mut ctx = current_trap_ctx();
             ctx.pc += 4;
-            let result =
-                syscall(ctx.regs[17], [ctx.regs[10], ctx.regs[11], ctx.regs[12]]) as usize;
+            let result = syscall(ctx.regs[17], [ctx.regs[10], ctx.regs[11], ctx.regs[12]]) as usize;
             ctx = current_trap_ctx();
             ctx.regs[10] = result;
             // log!(
@@ -106,8 +112,11 @@ pub fn trap_handler() -> ! {
 #[no_mangle]
 pub fn trap_return() -> ! {
     set_user_trap_entry();
+    resolve_message();
+    set_next_interrupt();
     let trap_ctx_ptr = TRAP_CONTEXT;
     let user_satp = current_user_token();
+    // log!("[kernel] return to user mode, satp = {:#x}", user_satp,);
     extern "C" {
         fn __alltraps();
         fn __restore();
