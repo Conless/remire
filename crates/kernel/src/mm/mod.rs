@@ -112,6 +112,12 @@ pub fn remove_user_space(token: usize) {
     USER_SPACES.borrow_mut().remove(&token).unwrap();
 }
 
+pub fn recycle_user_space(token: usize) {
+    let mut user_spaces = USER_SPACES.borrow_mut();
+    let mm = user_spaces.get_mut(&token).unwrap();
+    mm.recycle();
+}
+
 pub fn change_program_brk(token: usize, size: i32) -> Option<usize> {
     let mut user_spaces = USER_SPACES.borrow_mut();
     let mm = user_spaces.get_mut(&token).unwrap();

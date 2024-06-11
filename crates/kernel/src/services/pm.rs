@@ -35,6 +35,23 @@ pub fn init(token: usize) {
     send_msg!(Kernel2PM::Init { token });
 }
 
+pub fn reply() {
+    while let Some((_, msg)) = resolve_msg!() {
+        match msg {
+            PM2Kernel::Remove { token } => {
+                log!("[kernel] Remove mm token: {:x}", token);
+                remove_user_space(token)
+            },
+            PM2Kernel::Recycle { token }  => {
+                log!("[kernel] Recycle mm token: {:x}", token);
+                recycle_user_space(token)
+            },
+            _ => {
+                panic!("Invalid message");
+            }
+        }
+    }
+}
 
 pub fn fork(pid: usize, token: usize) -> usize {
     if let (_, PM2Kernel::ForkReply { child_pid }) = send_msg_and_wait!(Kernel2PM::Fork { pid, token }) {

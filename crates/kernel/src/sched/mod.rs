@@ -8,7 +8,7 @@ use proc::{schedule, take_current_task};
 use scheduler::add_thread;
 use thread_info::ThreadInfo;
 
-use crate::{log, sbi::shutdown, task::exit};
+use crate::{log, sbi::shutdown, services::pm::exit};
 
 pub mod proc;
 pub mod scheduler;
