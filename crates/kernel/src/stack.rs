@@ -33,7 +33,7 @@ fn get_kernel_stack_addr(id: usize) -> (usize, usize) {
 impl KernelStack {
     pub fn new_process() -> Self {
         let id = KERNEL_STACK_ALLOCATOR.borrow_mut().alloc().unwrap();
-        println!("id: {}", id);
+        log!("[kernel] allocate new kernel stack id: {}", id);
         let (top, bottom) = get_kernel_stack_addr(id);
         log!("[kernel] mapping kernel stack [{:#x}, {:#x})", bottom, top);
         KERNEL_SPACE.borrow_mut().insert(

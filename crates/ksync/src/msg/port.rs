@@ -94,7 +94,7 @@ where
 
     pub unsafe fn spin_recv(&self, id: isize) -> (isize, I) {
         loop {
-            if let Some(id) = self.try_recv(&|a| a == 0 || a == id) {
+            if let Some(id) = self.try_recv(&|a| id == 0 || id == a) {
                 let recv_port_ptr = &mut *self.recv_port;
                 let mut recv_port = recv_port_ptr.write();
                 let msg = recv_port.pop_id(id).unwrap();
