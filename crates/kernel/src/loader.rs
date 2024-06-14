@@ -4,13 +4,9 @@
 // LICENSE file in the root directory of this source tree.
 
 use alloc::vec::Vec;
-use core::arch::asm;
 use lazy_static::lazy_static;
 
-use crate::{
-    config::{APP_BASE_ADDRESS, APP_SIZE_LIMIT},
-    println,
-};
+use crate::println;
 
 lazy_static! {
     static ref APP_NAMES: Vec<&'static str> = {
@@ -34,6 +30,28 @@ lazy_static! {
         }
         v
     };
+    
+    static ref SERVICE_NAMES: Vec<&'static str> = {
+        let num_service = get_num_service();
+        extern "C" {
+            fn _service_names();
+        }
+        let mut start = _service_names as usize as *const u8;
+        let mut v = Vec::new();
+        unsafe {
+            for _ in 0..num_service {
+                let mut end = start;
+                while end.read_volatile() != b'\0' {
+                    end = end.add(1);
+                }
+                let slice = core::slice::from_raw_parts(start, end as usize - start as usize);
+                let str = core::str::from_utf8(slice).unwrap();
+                v.push(str);
+                start = end.add(1);
+            }
+        }
+        v
+    };
 }
 
 pub fn get_num_app() -> usize {
@@ -43,36 +61,11 @@ pub fn get_num_app() -> usize {
     unsafe { (_num_app as usize as *const usize).read_volatile() }
 }
 
-pub fn get_app_addr(app_id: usize) -> usize {
-    APP_BASE_ADDRESS + app_id * APP_SIZE_LIMIT
-}
-
-fn clear_app_region(app_id: usize) {
-    let addr = get_app_addr(app_id);
-    (addr..addr + APP_SIZE_LIMIT).for_each(|addr| unsafe { (addr as *mut u8).write_volatile(0) });
-}
-
-pub fn load_apps() {
+pub fn get_num_service() -> usize {
     extern "C" {
-        fn _num_app();
+        fn _num_service();
     }
-    let num_app_ptr = _num_app as usize as *const usize;
-    let num_app = get_num_app();
-    let app_start = unsafe { core::slice::from_raw_parts(num_app_ptr.add(1), num_app + 1) };
-
-    for i in 0..num_app {
-        let addr = get_app_addr(i);
-        clear_app_region(i);
-        let src = unsafe {
-            core::slice::from_raw_parts(app_start[i] as *const u8, app_start[i + 1] - app_start[i])
-        };
-        let dst = unsafe { core::slice::from_raw_parts_mut(addr as *mut u8, src.len()) };
-        dst.copy_from_slice(src);
-    }
-
-    unsafe {
-        asm!("fence.i");
-    }
+    unsafe { (_num_service as usize as *const usize).read_volatile() }
 }
 
 pub fn get_app_data(app_id: usize) -> &'static [u8] {
@@ -96,6 +89,29 @@ pub fn get_app_data_by_name(name: &str) -> Option<&'static [u8]> {
     (0..num_app)
         .find(|&i| APP_NAMES[i] == name)
         .map(get_app_data)
+}
+
+pub fn get_service_data(service_id: usize) -> &'static [u8] {
+    extern "C" {
+        fn _num_service();
+    }
+    let num_service_ptr = _num_service as usize as *const usize;
+    let num_service = get_num_service();
+    let service_start = unsafe { core::slice::from_raw_parts(num_service_ptr.add(1), num_service + 1) };
+    assert!(service_id < num_service);
+    unsafe {
+        core::slice::from_raw_parts(
+            service_start[service_id] as *const u8,
+            service_start[service_id + 1] - service_start[service_id],
+        )
+    }
+}
+
+pub fn get_service_data_by_name(name: &str) -> Option<&'static [u8]> {
+    let num_service = get_num_service();
+    (0..num_service)
+        .find(|&i| SERVICE_NAMES[i] == name)
+        .map(get_service_data)
 }
 
 pub fn list_apps() {

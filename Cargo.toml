@@ -5,7 +5,9 @@ members = [
 exclude = [
   "bios",
   "xtask",
-  "crates/user",
 ]
+
+[profile.dev]
+debug = true
 
 resolver = "2"

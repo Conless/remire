@@ -21,4 +21,3 @@ impl<T> UPSafeCell<T> {
         self.0.borrow_mut()
     }
 }
-

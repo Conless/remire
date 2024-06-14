@@ -5,9 +5,9 @@
 
 core::arch::global_asm!(include_str!("switch.S"));
 
-use super::TaskContext;
+use super::thread_info::ThreadInfo;
 
 // Wrapper for the assembly function `__switch`
 extern "C" {
-    pub fn __switch(current_task_ctx_ptr: *mut TaskContext, next_task_ctx_ptr: *const TaskContext);
+    pub fn __switch(current_thread: *mut ThreadInfo, next_thread: *const ThreadInfo);
 }

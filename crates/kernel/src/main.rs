@@ -12,23 +12,28 @@ use core::arch::{asm, global_asm};
 
 extern crate alloc;
 
-use mm::{activate_kernel_space, init_frame_allocator};
+use loader::get_app_data_by_name;
+use mm::{activate_kernel_space, init_frame_allocator, new_user_space};
 use alloc::boxed::Box;
 use drivers::init_device;
 use allocator::init_heap_allocator;
-use task::pid::init_pid_allocator;
+use sched::scheduler::add_process;
+use services::{init_services, pm::init};
+// use task::init_task_manager;
 
 mod allocator;
 mod lang;
 mod sbi;
 mod config;
 mod console;
+mod loader;
 mod trap;
 mod stack;
 mod syscall;
-mod sync;
-mod task;
+// mod task;
+mod services;
 mod mm;
+mod sched;
 
 global_asm!(include_str!("entry.S"));
 global_asm!(include_str!("link_app.S"));
@@ -37,19 +42,24 @@ global_asm!(include_str!("link_app.S"));
 extern "C" fn rust_init() -> ! {
     init_heap_allocator();
     init_frame_allocator();
-    init_pid_allocator(0, 127);
     activate_kernel_space();
     rust_main()
+}
+
+fn add_init_process() {
+    init_services();
+    let init_token = new_user_space(get_app_data_by_name("initproc").unwrap());
+    init(init_token);
+    add_process(1, init_token)
 }
 
 fn rust_main() -> ! {
     log!("[kernel] Hello, World!");
     trap::init();
-    task::load_apps();
-    task::list_apps();
+    loader::list_apps();
     trap::enable_timer_interrupt();
-    task::add_all_tasks();
-    task::run_first_task()
+    add_init_process();
+    sched::scheduler::start_schedule()
 }
 
 /// This function is made only to make `cargo test` and analyzer happy

@@ -8,6 +8,7 @@ use alloc::vec::Vec;
 use bitflags::*;
 use crate::log;
 
+use super::page::{VirtAddr, VirtPageNum};
 use super::types::*;
 use super::frame::{frame_alloc, FrameGuard};
 
@@ -147,7 +148,7 @@ impl PageTable {
             panic!("[memory] virtual address {:#x} is already mapped", vpn.0);
         }
         *entry = PageTableEntry::new(ppn, flags | PTEFlags::V);
-        log!("[memory] page table {:#x} mapping {:#x} to {:#x}", self.token(), vpn.0, ppn.0);
+        // log!("[memory] page table {:#x} mapping {:#x} to {:#x}", self.token(), vpn.0, ppn.0);
     }
 
     /// Unmap a virtual page number

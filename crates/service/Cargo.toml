@@ -1,0 +1,13 @@
+[package]
+name = "service"
+version = "0.1.0"
+authors = ["Conless Pan <conlesspan@outlook.com>"]
+edition = "2018"
+build = "build.rs"
+
+[dependencies]
+buddy_system_allocator = "0.6"
+lazy_static = { version = "1.4.0", features = ["spin_no_std"] }
+ksync = { path = "../ksync" }
+allocator = { path = "../allocator" }
+spin = "0.9"

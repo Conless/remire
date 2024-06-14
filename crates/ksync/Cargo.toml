@@ -1,0 +1,8 @@
+[package]
+name = "ksync"
+version = "0.1.0"
+authors = [ "Conless Pan <conlesspan@outlook.com>" ]
+edition = "2021"
+
+[dependencies]
+spin = "0.9"

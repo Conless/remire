@@ -24,7 +24,7 @@ _num_app:
     .quad app_16_end
 
     .global _app_names
-    _app_names:
+_app_names:
     .string "exit"
     .string "fantastic_text"
     .string "forkexec"
@@ -48,7 +48,7 @@ _num_app:
     .global app_0_end
     .align 3
 app_0_start:
-    .incbin "/home/conless/Desktop/study/os/sjtu-cs2952/remire/crates/user/target/riscv64gc-unknown-none-elf/release/exit"
+    .incbin "/home/conless/Desktop/study/os/sjtu-cs2952/remire/target/riscv64gc-unknown-none-elf/debug/exit"
 app_0_end:
 
     .section .data
@@ -56,7 +56,7 @@ app_0_end:
     .global app_1_end
     .align 3
 app_1_start:
-    .incbin "/home/conless/Desktop/study/os/sjtu-cs2952/remire/crates/user/target/riscv64gc-unknown-none-elf/release/fantastic_text"
+    .incbin "/home/conless/Desktop/study/os/sjtu-cs2952/remire/target/riscv64gc-unknown-none-elf/debug/fantastic_text"
 app_1_end:
 
     .section .data
@@ -64,7 +64,7 @@ app_1_end:
     .global app_2_end
     .align 3
 app_2_start:
-    .incbin "/home/conless/Desktop/study/os/sjtu-cs2952/remire/crates/user/target/riscv64gc-unknown-none-elf/release/forkexec"
+    .incbin "/home/conless/Desktop/study/os/sjtu-cs2952/remire/target/riscv64gc-unknown-none-elf/debug/forkexec"
 app_2_end:
 
     .section .data
@@ -72,7 +72,7 @@ app_2_end:
     .global app_3_end
     .align 3
 app_3_start:
-    .incbin "/home/conless/Desktop/study/os/sjtu-cs2952/remire/crates/user/target/riscv64gc-unknown-none-elf/release/forktest"
+    .incbin "/home/conless/Desktop/study/os/sjtu-cs2952/remire/target/riscv64gc-unknown-none-elf/debug/forktest"
 app_3_end:
 
     .section .data
@@ -80,7 +80,7 @@ app_3_end:
     .global app_4_end
     .align 3
 app_4_start:
-    .incbin "/home/conless/Desktop/study/os/sjtu-cs2952/remire/crates/user/target/riscv64gc-unknown-none-elf/release/forktest2"
+    .incbin "/home/conless/Desktop/study/os/sjtu-cs2952/remire/target/riscv64gc-unknown-none-elf/debug/forktest2"
 app_4_end:
 
     .section .data
@@ -88,7 +88,7 @@ app_4_end:
     .global app_5_end
     .align 3
 app_5_start:
-    .incbin "/home/conless/Desktop/study/os/sjtu-cs2952/remire/crates/user/target/riscv64gc-unknown-none-elf/release/forktest_simple"
+    .incbin "/home/conless/Desktop/study/os/sjtu-cs2952/remire/target/riscv64gc-unknown-none-elf/debug/forktest_simple"
 app_5_end:
 
     .section .data
@@ -96,7 +96,7 @@ app_5_end:
     .global app_6_end
     .align 3
 app_6_start:
-    .incbin "/home/conless/Desktop/study/os/sjtu-cs2952/remire/crates/user/target/riscv64gc-unknown-none-elf/release/forktree"
+    .incbin "/home/conless/Desktop/study/os/sjtu-cs2952/remire/target/riscv64gc-unknown-none-elf/debug/forktree"
 app_6_end:
 
     .section .data
@@ -104,7 +104,7 @@ app_6_end:
     .global app_7_end
     .align 3
 app_7_start:
-    .incbin "/home/conless/Desktop/study/os/sjtu-cs2952/remire/crates/user/target/riscv64gc-unknown-none-elf/release/hello_world"
+    .incbin "/home/conless/Desktop/study/os/sjtu-cs2952/remire/target/riscv64gc-unknown-none-elf/debug/hello_world"
 app_7_end:
 
     .section .data
@@ -112,7 +112,7 @@ app_7_end:
     .global app_8_end
     .align 3
 app_8_start:
-    .incbin "/home/conless/Desktop/study/os/sjtu-cs2952/remire/crates/user/target/riscv64gc-unknown-none-elf/release/initproc"
+    .incbin "/home/conless/Desktop/study/os/sjtu-cs2952/remire/target/riscv64gc-unknown-none-elf/debug/initproc"
 app_8_end:
 
     .section .data
@@ -120,7 +120,7 @@ app_8_end:
     .global app_9_end
     .align 3
 app_9_start:
-    .incbin "/home/conless/Desktop/study/os/sjtu-cs2952/remire/crates/user/target/riscv64gc-unknown-none-elf/release/matrix"
+    .incbin "/home/conless/Desktop/study/os/sjtu-cs2952/remire/target/riscv64gc-unknown-none-elf/debug/matrix"
 app_9_end:
 
     .section .data
@@ -128,7 +128,7 @@ app_9_end:
     .global app_10_end
     .align 3
 app_10_start:
-    .incbin "/home/conless/Desktop/study/os/sjtu-cs2952/remire/crates/user/target/riscv64gc-unknown-none-elf/release/sleep"
+    .incbin "/home/conless/Desktop/study/os/sjtu-cs2952/remire/target/riscv64gc-unknown-none-elf/debug/sleep"
 app_10_end:
 
     .section .data
@@ -136,7 +136,7 @@ app_10_end:
     .global app_11_end
     .align 3
 app_11_start:
-    .incbin "/home/conless/Desktop/study/os/sjtu-cs2952/remire/crates/user/target/riscv64gc-unknown-none-elf/release/sleep_simple"
+    .incbin "/home/conless/Desktop/study/os/sjtu-cs2952/remire/target/riscv64gc-unknown-none-elf/debug/sleep_simple"
 app_11_end:
 
     .section .data
@@ -144,7 +144,7 @@ app_11_end:
     .global app_12_end
     .align 3
 app_12_start:
-    .incbin "/home/conless/Desktop/study/os/sjtu-cs2952/remire/crates/user/target/riscv64gc-unknown-none-elf/release/stack_overflow"
+    .incbin "/home/conless/Desktop/study/os/sjtu-cs2952/remire/target/riscv64gc-unknown-none-elf/debug/stack_overflow"
 app_12_end:
 
     .section .data
@@ -152,7 +152,7 @@ app_12_end:
     .global app_13_end
     .align 3
 app_13_start:
-    .incbin "/home/conless/Desktop/study/os/sjtu-cs2952/remire/crates/user/target/riscv64gc-unknown-none-elf/release/user_shell"
+    .incbin "/home/conless/Desktop/study/os/sjtu-cs2952/remire/target/riscv64gc-unknown-none-elf/debug/user_shell"
 app_13_end:
 
     .section .data
@@ -160,7 +160,7 @@ app_13_end:
     .global app_14_end
     .align 3
 app_14_start:
-    .incbin "/home/conless/Desktop/study/os/sjtu-cs2952/remire/crates/user/target/riscv64gc-unknown-none-elf/release/usertests"
+    .incbin "/home/conless/Desktop/study/os/sjtu-cs2952/remire/target/riscv64gc-unknown-none-elf/debug/usertests"
 app_14_end:
 
     .section .data
@@ -168,7 +168,7 @@ app_14_end:
     .global app_15_end
     .align 3
 app_15_start:
-    .incbin "/home/conless/Desktop/study/os/sjtu-cs2952/remire/crates/user/target/riscv64gc-unknown-none-elf/release/usertests-simple"
+    .incbin "/home/conless/Desktop/study/os/sjtu-cs2952/remire/target/riscv64gc-unknown-none-elf/debug/usertests-simple"
 app_15_end:
 
     .section .data
@@ -176,5 +176,25 @@ app_15_end:
     .global app_16_end
     .align 3
 app_16_start:
-    .incbin "/home/conless/Desktop/study/os/sjtu-cs2952/remire/crates/user/target/riscv64gc-unknown-none-elf/release/yield"
+    .incbin "/home/conless/Desktop/study/os/sjtu-cs2952/remire/target/riscv64gc-unknown-none-elf/debug/yield"
 app_16_end:
+
+    .align 3
+    .section .data
+    .global _num_service
+_num_service:
+    .quad 1
+    .quad service_0_start
+    .quad service_0_end
+
+    .global _service_names
+_service_names:
+    .string "pm"
+
+    .section .data
+    .global service_0_start
+    .global service_0_end
+    .align 3
+service_0_start:
+    .incbin "/home/conless/Desktop/study/os/sjtu-cs2952/remire/target/riscv64gc-unknown-none-elf/debug/pm"
+service_0_end:

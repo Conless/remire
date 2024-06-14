@@ -59,11 +59,6 @@ fn compile(mode: &BuildMode) -> bool {
     if !dir.exists() {
         fs::create_dir_all(&dir).unwrap();
     }
-    let ld = project_root().join("target/riscv64gc-unknown-none-elf/linker.ld");
-    println!("[build] Writing linker script to {}", ld.to_str().unwrap());
-    fs::write(&ld, LINKER).unwrap();
-    println!("[build] Writing app data to crates/kernel/src/link_app.S");
-    insert_app_data().unwrap();
     let mut command = Command::new(cargo);
     command
         .arg("build")
@@ -72,10 +67,6 @@ fn compile(mode: &BuildMode) -> bool {
     if let BuildMode::Release = mode {
         command.arg("--release");
     }
-    command.env(
-        "RUSTFLAGS",
-        "-C link-arg=-T".to_string() + ld.to_str().unwrap() + " -C force-frame-pointers=yes",
-    );
     command.current_dir(project_root());
     println!("[build] Running command: {}", command_to_string(&command));
     let status = command.status();
@@ -301,60 +292,6 @@ fn gdb(mode: &BuildMode) -> bool {
     status.unwrap().success()
 }
 
-static TARGET_PATH: &str = "crates/user/target/riscv64gc-unknown-none-elf/release/";
-
-fn insert_app_data() -> Result<(), std::io::Error> {
-    let mut f = File::create(project_root().join("crates/kernel/src/link_app.S")).unwrap();
-    let mut apps: Vec<_> = read_dir(project_root().join("crates/user/src/bin"))
-        .unwrap()
-        .map(|dir_entry| {
-            let mut name_with_ext = dir_entry.unwrap().file_name().into_string().unwrap();
-            name_with_ext.drain(name_with_ext.find('.').unwrap()..name_with_ext.len());
-            name_with_ext
-        })
-        .collect();
-    apps.sort();
-
-    writeln!(
-        f,
-        r#"
-    .align 3
-    .section .data
-    .global _num_app
-_num_app:
-    .quad {}"#,
-        apps.len()
-    )?;
-
-    for i in 0..apps.len() {
-        writeln!(f, r#"    .quad app_{}_start"#, i)?;
-    }
-    writeln!(f, r#"    .quad app_{}_end"#, apps.len() - 1)?;
-    
-    writeln!(f, r#"
-    .global _app_names
-    _app_names:"#)?;
-    for app in apps.iter() {
-        writeln!(f, r#"    .string "{}""#, app)?;
-    }
-
-    for (idx, app) in apps.iter().enumerate() {
-        println!("app_{}: {}", idx, app);
-        writeln!(
-            f,
-            r#"
-    .section .data
-    .global app_{0}_start
-    .global app_{0}_end
-    .align 3
-app_{0}_start:
-    .incbin "{2}{1}"
-app_{0}_end:"#,
-            idx, app, project_root().join(TARGET_PATH).to_str().unwrap()
-        )?;
-    }
-    Ok(())
-}
 
 fn main() {
     let matches = clap_app!(xtask =>
@@ -421,58 +358,3 @@ fn main() {
         }
     }
 }
-
-const LINKER: &[u8] = b"
-OUTPUT_ARCH(riscv)
-ENTRY(_start)
-BASE_ADDRESS = 0x80200000;
-
-SECTIONS
-{
-    . = BASE_ADDRESS;
-    skernel = .;
-
-    stext = .;
-    .text : {
-        *(.text.entry)
-        . = ALIGN(4K);
-        strampoline = .;
-        *(.text.trampoline);
-        . = ALIGN(4K);
-        *(.text .text.*)
-    }
-
-    . = ALIGN(4K);
-    etext = .;
-    srodata = .;
-    .rodata : {
-        *(.rodata .rodata.*)
-        *(.srodata .srodata.*)
-    }
-
-    . = ALIGN(4K);
-    erodata = .;
-    sdata = .;
-    .data : {
-        *(.data .data.*)
-        *(.sdata .sdata.*)
-    }
-
-    . = ALIGN(4K);
-    edata = .;
-    sbss_with_stack = .;
-    .bss : {
-        *(.bss.stack)
-        sbss = .;
-        *(.bss .bss.*)
-        *(.sbss .sbss.*)
-    }
-
-    . = ALIGN(4K);
-    ebss = .;
-    ekernel = .;
-
-    /DISCARD/ : {
-        *(.eh_frame)
-    }
-}";

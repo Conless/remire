@@ -4,10 +4,11 @@
 // LICENSE file in the root directory of this source tree.
 
 
-use crate::{config::MEMORY_END, log, println, sync::UPSafeCell};
+use crate::config::MEMORY_END;
 
 use super::{FrameGuard, PhysAddr, PhysPageNum};
 
+use ksync::UPSafeCell;
 use lazy_static::lazy_static;
 
 use allocator::StackAllocator;

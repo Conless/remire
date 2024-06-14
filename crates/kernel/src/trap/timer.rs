@@ -5,6 +5,7 @@
 
 use crate::config::CLOCK_FREQ;
 use crate::sbi::set_timer;
+use crate::sched::proc::current_pid;
 use riscv::register::time;
 
 const TICKS_PER_SEC: usize = 100; // Interrupts every 10 ms
@@ -19,5 +20,9 @@ pub fn get_time_ms() -> usize {
 }
 
 pub fn set_next_interrupt() {
-    set_timer(get_time() + CLOCK_FREQ / TICKS_PER_SEC);
+    if current_pid() != 0 {
+        set_timer(get_time() + CLOCK_FREQ / TICKS_PER_SEC);
+    } else {
+        set_timer(usize::MAX)
+    }
 }

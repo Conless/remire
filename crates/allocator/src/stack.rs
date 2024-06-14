@@ -21,6 +21,15 @@ impl StackAllocator {
         self.current = l;
         self.end = r;
     }
+    
+    /// Create a new stack allocator
+    pub fn new(l: usize, r: usize) -> Self {
+        Self {
+            current: l,
+            end: r,
+            recycled: Vec::new(),
+        }
+    }
 
     /// Allocate a frame
     pub fn alloc(&mut self) -> Option<usize> {

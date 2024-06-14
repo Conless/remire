@@ -11,7 +11,8 @@ mod syscall;
 use buddy_system_allocator::LockedHeap;
 use syscall::*;
 
-const USER_HEAP_SIZE: usize = 16384;
+const USER_HEAP_SIZE: usize = 4096 * 4;
+
 
 static mut HEAP_SPACE: [u8; USER_HEAP_SIZE] = [0; USER_HEAP_SIZE];
 

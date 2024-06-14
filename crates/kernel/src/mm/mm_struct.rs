@@ -12,6 +12,8 @@ use super::page::{VirtAddr, VirtPageNum};
 use super::page_table::{PTEFlags, PageTable};
 use super::vm_area::{MapPermission, MapType, VMArea};
 
+use crate::config::USER_STACK_SIZE;
+use crate::stack::KernelStack;
 use crate::{
     config::{MEMORY_END, MMIO, PAGE_SIZE, TRAMPOLINE, TRAP_CONTEXT},
     log,
@@ -25,6 +27,7 @@ pub struct MMStruct {
     page_table: PageTable,
     areas: Vec<VMArea>,
     brk: usize,
+    kernel_stack: Option<KernelStack>,
     heap_bottom: usize,
 }
 
@@ -44,6 +47,10 @@ extern "C" {
 impl MMStruct {
     pub fn token(&self) -> usize {
         self.page_table.token()
+    }
+
+    pub fn kernel_stack_top(&self) -> usize {
+        self.kernel_stack.as_ref().unwrap().get_top()
     }
     
     pub fn recycle(&mut self) {
@@ -193,6 +200,9 @@ impl MMStruct {
         // map trampline
         mm.map_trampoline();
         
+        // map kernel stack
+        mm.kernel_stack = Some(KernelStack::new_process());
+        
         // map app sections
         let elf_data = xmas_elf::ElfFile::new(app_data).unwrap();
         let elf_header = elf_data.header;
@@ -239,7 +249,7 @@ impl MMStruct {
         let end_va: VirtAddr = mm.areas.last().unwrap().get_end().into();
         let end_va_usize: usize = end_va.into();
         let user_stack_bottom: usize = end_va_usize + PAGE_SIZE;
-        let user_stack_top = user_stack_bottom + PAGE_SIZE;
+        let user_stack_top = user_stack_bottom + USER_STACK_SIZE;
         log!(
             "[kernel] mapping user stack [{:#x}, {:#x})",
             user_stack_bottom, user_stack_top
@@ -291,6 +301,21 @@ impl MMStruct {
             user_stack_top,
             elf_data.header.pt2.entry_point() as usize,
         )
+    }
+    
+    pub fn alloc_port(&mut self, va: usize) -> usize {
+        log!(
+            "[kernel] mapping port area [{:#x}, {:#x})",
+            va, va + PAGE_SIZE * 2
+        );
+        let port_area = VMArea::new(
+            va.into(),
+            (va + PAGE_SIZE * 2).into(),
+            MapType::Framed,
+            MapPermission::R | MapPermission::W | MapPermission::U,
+        );
+        self.push(port_area, None);
+        PhysAddr::from(self.translate(VirtAddr::from(va).into()).unwrap()).into()
     }
 
     pub fn translate(&self, vpn: VirtPageNum) -> Option<PhysPageNum> {
@@ -367,6 +392,7 @@ impl Clone for MMStruct {
     fn clone(&self) -> Self {
         let mut new_mm = Self::default();
         new_mm.map_trampoline();
+        new_mm.kernel_stack = Some(KernelStack::new_process());
         for area in &self.areas {
             // We cannot do deep copy here, since the page table is different
             new_mm.push(area.clone(), None);

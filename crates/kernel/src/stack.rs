@@ -3,35 +3,45 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use crate::mm::types::VirtAddr;
-use crate::mm::{MapPermission, KERNEL_SPACE};
-use crate::log;
-use crate::{config::*, trap::TrapContext};
-use crate::task::pid::PIDGuard;
+use allocator::StackAllocator;
+use ksync::UPSafeCell;
+use lazy_static::lazy_static;
 
-#[derive(Default, Debug)]
+use crate::mm::{MapPermission, VirtAddr};
+use crate::mm::KERNEL_SPACE;
+use crate::{log, println};
+use crate::config::*;
+
+#[derive(Debug)]
 pub struct KernelStack {
     top: usize,
-    bottom: usize,
+    id: usize,
 }
 
-fn get_kernel_stack_addr(pid: usize) -> (usize, usize) {
-    let top = TRAMPOLINE - pid * (KERNEL_STACK_SIZE + PAGE_SIZE);
+lazy_static! {
+    static ref KERNEL_STACK_ALLOCATOR: UPSafeCell<StackAllocator> = unsafe {
+        UPSafeCell::new(StackAllocator::new(0, KERNEL_STACK_NUM))
+    };
+}
+
+fn get_kernel_stack_addr(id: usize) -> (usize, usize) {
+    let top = TRAMPOLINE - id * (KERNEL_STACK_SIZE + PAGE_SIZE);
     let bottom = top - KERNEL_STACK_SIZE;
     (top, bottom)
 }
 
 impl KernelStack {
-    pub fn new(pid: &PIDGuard) -> Self {
-        let pid = pid.0;
-        let (top, bottom) = get_kernel_stack_addr(pid);
+    pub fn new_process() -> Self {
+        let id = KERNEL_STACK_ALLOCATOR.borrow_mut().alloc().unwrap();
+        log!("[kernel] allocate new kernel stack id: {}", id);
+        let (top, bottom) = get_kernel_stack_addr(id);
         log!("[kernel] mapping kernel stack [{:#x}, {:#x})", bottom, top);
         KERNEL_SPACE.borrow_mut().insert(
             bottom.into(),
             top.into(),
             MapPermission::R | MapPermission::W,
         );
-        KernelStack { top, bottom }
+        Self { top, id }
     }
     
     pub fn get_top(&self) -> usize {
@@ -41,10 +51,15 @@ impl KernelStack {
 
 impl Drop for KernelStack {
     fn drop(&mut self) {
+        if self.top == 0 {
+            return;
+        }
+        let bottom = self.top - KERNEL_STACK_SIZE;
         log!(
             "[kernel] unmapping kernel stack [{:#x}, {:#x})",
-            self.bottom, self.top);
-        let start_va: VirtAddr = self.bottom.into();
+            bottom, self.top);
+        let start_va: VirtAddr = bottom.into();
         KERNEL_SPACE.borrow_mut().remove(start_va.into());
+        KERNEL_STACK_ALLOCATOR.borrow_mut().dealloc(self.id);
     }
 }
