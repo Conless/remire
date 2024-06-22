@@ -53,10 +53,10 @@ pub struct Uart16550<T> {
 impl Uart16550<AtomicU8> {
     /// Initialize UART
     pub fn init(&self) {
-        // self.int_en.store(0x00, Ordering::Relaxed);
-        // self.fifo_ctrl.store(0xC7, Ordering::Relaxed);
-        // self.line_ctrl.store(0x0B, Ordering::Relaxed);
-        // self.int_en.store(0x01, Ordering::Relaxed);
+        self.int_en.store(0x00, Ordering::Relaxed);
+        self.fifo_ctrl.store(0xC7, Ordering::Relaxed);
+        self.line_ctrl.store(0x0B, Ordering::Relaxed);
+        self.int_en.store(0x01, Ordering::Relaxed);
     }
 
     /// Get line status.
