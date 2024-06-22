@@ -35,9 +35,9 @@ __alltraps:
     csrr t2, sscratch
     sd t2, 2*8(sp)  # TrapContext::sp
     
-    ld t0, 34*8(sp) # TrapContext::satp
+    ld t0, 34*8(sp) # TrapContext::kernel_satp
     ld t1, 36*8(sp) # TrapContext::trap_handler
-    ld sp, 35*8(sp) # TrapContext::sp
+    ld sp, 35*8(sp) # TrapContext::kernel_sp
 
     # switch to kernel space
     csrw satp, t0
