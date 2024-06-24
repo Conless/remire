@@ -1,2 +1,2 @@
 [alias]
-make = "run --manifest-path ./xtask/Cargo.toml --"
+make = "run --manifest-path ./tools/xtask/Cargo.toml --"
