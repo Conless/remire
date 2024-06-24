@@ -5,18 +5,9 @@
 
 use core::fmt::{self, Write};
 
+use crate::fs::Stdout;
+
 const STDOUT: usize = 1;
-
-use super::write;
-
-struct Stdout;
-
-impl Write for Stdout {
-    fn write_str(&mut self, s: &str) -> fmt::Result {
-        write(STDOUT, s.as_bytes());
-        Ok(())
-    }
-}
 
 pub fn print(args: fmt::Arguments) {
     Stdout.write_fmt(args).unwrap();

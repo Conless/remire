@@ -14,6 +14,8 @@ extern crate alloc;
 pub mod console;
 mod allocator;
 pub mod config;
+pub mod drivers;
+pub mod fs;
 mod lang_items;
 pub mod syscall;
 pub mod task;
