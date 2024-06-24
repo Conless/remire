@@ -9,15 +9,15 @@
 # Global trap handler
 #
 # fn __alltraps(ctx: &mut TrapContext) -> !
-    .section .text.trampoline
+    .section .text
     .globl __alltraps
     .globl __restore
     .align 2
 __alltraps:
-    # change sp to kernel stack
-    csrrw sp, sscratch, sp
+    # change sp to machine stack
+    csrrw sp, mscratch, sp
 
-    # now sp points to *TrapContext of user space
+    # now sp points to *TrapContext 
     # and sscratch points to user stack
     sd ra, 1*8(sp)
     sd gp, 3*8(sp)
@@ -27,39 +27,36 @@ __alltraps:
         .set n, n+1
     .endr
 
-    csrr t0, sstatus
-    csrr t1, sepc
-    sd t0, 32*8(sp) # TrapContext::status
-    sd t1, 33*8(sp) # TrapContext::pc
+    csrr t0, mepc
+    csrr t1, satp
+    sd t0, 32*8(sp) # TrapContext::pc
+    sd t1, 33*8(sp) # TrapContext::satp
     
-    csrr t2, sscratch
+    csrr t2, mscratch
     sd t2, 2*8(sp)  # TrapContext::sp
     
-    ld t0, 34*8(sp) # TrapContext::kernel_satp
-    ld t1, 36*8(sp) # TrapContext::trap_handler
-    ld sp, 35*8(sp) # TrapContext::kernel_sp
+    ld t1, 35*8(sp) # TrapContext::trap_handler
+    ld sp, 34*8(sp) # TrapContext::kernel_sp
 
-    # switch to kernel space
-    csrw satp, t0
+    # switch to machine mode
+    csrw satp, 0
     sfence.vma
     # jump to trap_handler
     jr t1
 
 # Restore from trap
 #
-# fn __restore(ctx: *mut TrapContext, satp: usize) -> !
+# fn __restore(ctx: *mut TrapContext) -> !
 __restore:
-    csrw satp, a1
-    sfence.vma
-    csrw sscratch, a0
+    csrw mscratch, a0
     mv sp, a0
 
     # now sp points to TrapContext in user space, start restoring based on it
-    # restore sstatus/sepc
+    # restore mepc/satp
     ld t0, 32*8(sp)
     ld t1, 33*8(sp)
-    csrw sstatus, t0
-    csrw sepc, t1
+    csrw mepc, t0
+    csrw satp, t1
 
     # restore registers
     ld ra, 1*8(sp)
@@ -69,6 +66,7 @@ __restore:
         LOAD_GP %n
         .set n, n+1
     .endr
+
     # back to user stack
     ld sp, 2*8(sp)
-    sret
+    mret

@@ -101,7 +101,7 @@ pub fn fork_user_space(token: usize) -> usize {
     let mm = USER_SPACES.borrow_mut().get(&token).unwrap().clone();
     let trap_ctx_ppn = mm.translate(VirtAddr::from(TRAP_CONTEXT).into()).unwrap();
     let trap_ctx: &mut TrapContext = trap_ctx_ppn.get_mut();
-    trap_ctx.sp = mm.kernel_stack_top();
+    trap_ctx.kernel_sp = mm.kernel_stack_top();
     let token = mm.token();
     USER_SPACES.borrow_mut().insert(token, mm);
     token

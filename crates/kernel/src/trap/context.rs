@@ -10,8 +10,8 @@ pub struct TrapContext {
     pub regs: [usize; 32],
     pub status: Sstatus,
     pub pc: usize,
-    pub satp: usize,
-    pub sp: usize,
+    pub kernel_satp: usize,
+    pub kernel_sp: usize,
     pub trap_handler: usize,
 }
 
@@ -32,8 +32,8 @@ impl TrapContext {
             regs: [0; 32],
             status: sstatus,
             pc: entry,
-            satp,
-            sp: kernel_sp,
+            kernel_satp: satp,
+            kernel_sp,
             trap_handler,
         };
         ctx.set_sp(sp);

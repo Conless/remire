@@ -24,7 +24,7 @@ enum BuildMode {
 fn project_root() -> PathBuf {
     Path::new(&env!("CARGO_MANIFEST_DIR"))
         .ancestors()
-        .nth(1)
+        .nth(2)
         .unwrap()
         .to_path_buf()
 }
@@ -174,7 +174,7 @@ fn qemu_run(mode: &BuildMode) -> bool {
         } else {
             "debug"
         })
-        .join("rustsbi-qemu.bin");
+        .join("bios.bin");
     let mut command = Command::new("qemu-system-riscv64");
     command
         .arg("-nographic")
@@ -245,7 +245,7 @@ fn qemu_debug(mode: &BuildMode) -> bool {
         } else {
             "debug"
         })
-        .join("rustsbi-qemu.bin");
+        .join("bios.bin");
     let mut command = Command::new("qemu-system-riscv64");
     command
         .arg("-nographic")
@@ -275,10 +275,18 @@ fn gdb(mode: &BuildMode) -> bool {
             "debug"
         })
         .join("kernel");
+    let bios_elf = project_root()
+        .join("bios/target/riscv64gc-unknown-none-elf")
+        .join(if let BuildMode::Release = mode {
+            "release"
+        } else {
+            "debug"
+        })
+        .join("bios");
     let mut command = Command::new("riscv64-elf-gdb");
     command
         .arg("-ex")
-        .arg("file ".to_string() + kernel_elf.to_str().unwrap())
+        .arg("file ".to_string() + bios_elf.to_str().unwrap())
         .arg("-ex")
         .arg("set arch riscv:rv64")
         .arg("-ex")
