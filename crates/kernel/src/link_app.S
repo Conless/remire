@@ -183,12 +183,14 @@ app_16_end:
     .section .data
     .global _num_service
 _num_service:
-    .quad 1
+    .quad 2
     .quad service_0_start
-    .quad service_0_end
+    .quad service_1_start
+    .quad service_1_end
 
     .global _service_names
 _service_names:
+    .string "fs"
     .string "pm"
 
     .section .data
@@ -196,5 +198,13 @@ _service_names:
     .global service_0_end
     .align 3
 service_0_start:
-    .incbin "/home/conless/Desktop/study/os/sjtu-cs2952/remire/target/riscv64gc-unknown-none-elf/debug/pm"
+    .incbin "/home/conless/Desktop/study/os/sjtu-cs2952/remire/target/riscv64gc-unknown-none-elf/debug/fs"
 service_0_end:
+
+    .section .data
+    .global service_1_start
+    .global service_1_end
+    .align 3
+service_1_start:
+    .incbin "/home/conless/Desktop/study/os/sjtu-cs2952/remire/target/riscv64gc-unknown-none-elf/debug/pm"
+service_1_end:

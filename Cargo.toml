@@ -4,7 +4,8 @@ members = [
 ]
 exclude = [
   "bios",
-  "xtask",
+  "tools/xtask",
+  "tools/packfs"
 ]
 
 [profile.dev]
