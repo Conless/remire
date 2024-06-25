@@ -11,8 +11,6 @@ use lazy_static::lazy_static;
 
 use ksync::{msg::task::PM2Kernel, UPSafeCell};
 
-use crate::msg::send_msg;
-
 use super::info::task_struct::{TaskStatus, TaskStruct};
 
 /// Inner data structure of the task manager
@@ -82,7 +80,7 @@ impl TaskManager {
         }
     }
 
-    pub fn exit(&mut self, pid: usize, exit_code: i32) {
+    pub fn exit(&mut self, pid: usize, exit_code: i32, msg_helper: impl Fn(PM2Kernel)) {
         let task = self.tasks.get(&pid).unwrap().clone();
         let mut task_inner = task.inner.borrow_mut();
         task_inner.status = TaskStatus::Zombie(exit_code);
@@ -98,7 +96,7 @@ impl TaskManager {
 
         task_inner.children.clear();
         self.tasks.remove(&pid);
-        send_msg(PM2Kernel::Recycle { token: task_inner.mm.0 });
+        msg_helper(PM2Kernel::Recycle { token: task_inner.mm.0 });
         drop(task_inner);
         drop(task);
     }

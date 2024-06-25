@@ -5,7 +5,7 @@
 
 use ksync::msg::task::PM2Kernel;
 
-use crate::msg::{send_msg};
+use crate::task::msg::send_msg;
 
 pub struct MMGuard(pub usize);
 

@@ -19,7 +19,6 @@ pub mod fs;
 mod lang_items;
 pub mod syscall;
 pub mod task;
-pub mod msg;
 
 use allocator::init_heap;
 use syscall::*;
