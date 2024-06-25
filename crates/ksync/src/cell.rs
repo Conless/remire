@@ -12,6 +12,7 @@ use core::cell::{RefCell, RefMut};
 pub struct UPSafeCell<T>(RefCell<T>);
 
 unsafe impl<T> Sync for UPSafeCell<T> {}
+unsafe impl<T> Send for UPSafeCell<T> {}
 
 impl<T> UPSafeCell<T> {
     pub const unsafe fn new(value: T) -> Self {
